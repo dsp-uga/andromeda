@@ -94,6 +94,6 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgments
 
+* Inspiration : Getting an A in Dr Shannon Quinn's Data Science Practicum Course
 * Hat tip to anyone who's code was used
-* Inspiration
 * etc
