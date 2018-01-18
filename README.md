@@ -2,7 +2,17 @@
 
 # Project 1: Scalable Document Classification
 
-One Paragraph of project description goes here
+For this project, we are using the Reuters Corpus, which is a set of news stories split into
+a hierarchy of categories. There are multiple class labels per document, but for the sake
+of simplicity we’ll ignore all but the labels ending in CAT:
+1. CCAT: Corporate / Industrial
+2. ECAT: Economics
+3. GCAT: Government / Social
+4. MCAT: Markets
+There are some documents with more than one CAT label. Treat those documents as if
+you observed the same document once for each CAT label. For example, if a document
+has both the labels CCAT and MCAT, you will essentially duplicate that document and give
+one of them only the label CCAT, and the other only the label MCAT.
 
 ## Getting Started
 
