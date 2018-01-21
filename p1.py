@@ -41,6 +41,19 @@ def count_threshold(word_count):
     word, count = word_count
     return count > 2
 
+def remove_stopwords(word_count):
+    """
+        This simply tests whether the term in question is listed among the
+        stopwords broadcast array.
+        """
+    stopwords = SW.value  # Extract the list from the broadcast value.
+    word, count = word_count
+    
+    # Remember: values corresponding to TRUE evaluations are retained (FALSE
+    # are filtered out of the RDD), so you want this statement to evaluate to
+    # TRUE for words you want to keep (i.e., words NOT in the stopwords list).
+    return word not in stopwords
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
 		epilog = "answer key", add_help = "How to use",
@@ -80,4 +93,17 @@ if __name__ == "__main__":
         	top_frequencies = frequencies.filter(count_threshold) \
 			.persist()
 
-	
+	# Remove the stop words if stopwords.txt is given
+    	word_frequencies = top_frequencies
+    	if not (stopwords is None):
+        	stopwords = np.loadtxt(stopwords, dtype = np.str).tolist()
+        	SW = sc.broadcast(stopwords)
+        	word_frequencies = top_frequencies.filter(remove_stopwords)
+
+    	(keep going)
+    
+    	# Naive Bayes
+    	if algorithm == "NB":
+
+    	# Logistic Regression
+    	# else algorithm = "LR":	
