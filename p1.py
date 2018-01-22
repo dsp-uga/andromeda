@@ -114,11 +114,11 @@ def remove_punctuation_advanced(word):
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
 		epilog = "answer key", add_help = "How to use",
-		prog = "python p1.py <options> [optional args]")
+		prog = "python p1.py [train-data] [train-label] [test-data] [optional args]")
 
 	# Required args
-	parser.add_argument("-p", "--path", required = True,
-		help = "Path to the directory containing all input text files")
+	parser.add_argument("paths", required = True, nargs=3,
+		help = "Paths of training-data, training-labels, and testing-data.")
 
 	# Optional args
 	parser.add_argument("-s", "--stopwords", default = None,
@@ -132,12 +132,14 @@ if __name__ == "__main__":
     	sc = SparkContext()
 
 	# Read in the variables
-    	inputs = args['path']
+	training_data = args['paths'][0]
+	training_label = args['paths'][1]
+	testing_data = args['paths'][2]
 	algorithm = args['algorithm']
 
     	# Necessary Lists
-    	stopwords = args['stopwords']
-    	punctuation = sc.broadcast(string.punctuation)
+    	SW = args['stopwords']
+    	PUNC = sc.broadcast(string.punctuation)
 	
 	# Generate an RDD of tuples
     	rdd = sc.wholeTextFile(inputs)
