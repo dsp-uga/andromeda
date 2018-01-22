@@ -141,10 +141,20 @@ if __name__ == "__main__":
     	SW = args['stopwords']
     	PUNC = sc.broadcast(string.punctuation)
 	
-	# Generate an RDD of tuples
-    	rdd = sc.wholeTextFile(inputs)
+	# Generate RDDs of tuples
+	rdd_train_data = sc.textFile(training_data)
+	rdd_train_label = sc.textFile(training_label)
+	rdd_test_data = sc.textFile(testing_data)
+	
+	rdd = rdd_train_data.zip(rdd_train_label)
 
 	# Preprocessing
+	rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
+	full_rdd = rdd.flatMapValues(lambda x: x)
+	valid_rdd = full_rdd.filter(lambda x: 'CAT' in x[1])
+	
+	
+	
 	if algorithm == "NB" or algorithm == "LR":
 		terms = rdd.flatMap(book_to_terms)
         	frequencies = terms.map(terms_to_counts) \
