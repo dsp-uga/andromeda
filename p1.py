@@ -3,6 +3,8 @@ import json
 import os.path
 import numpy as np
 import string
+from stop_words import get_stop_words
+from collections import Counter
 from operator import add
 
 from pyspark import SparkContext
@@ -126,8 +128,8 @@ if __name__ == "__main__":
 		help = "Paths of training-data, training-labels, and testing-data.")
 
 	# Optional args
-	parser.add_argument("-s", "--stopwords", default = None,
-	        help = "Path to a file containing stopwords. [DEFAULT: None]")
+# 	parser.add_argument("-s", "--stopwords", default = None,
+# 	        help = "Path to a file containing stopwords. [DEFAULT: None]")
 	parser.add_argument("-a", "--algorithm", choices = ["NB", "LR"], default = "NB",
 		help = "Algorithms to process classification: \"NB\": Naive Bayes, \"LR\": Logistic Regression [Default: Naive Bayes]")
     	parser.add_argument("-o", "--output", default = ".",
@@ -143,7 +145,8 @@ if __name__ == "__main__":
 	algorithm = args['algorithm']
 
     	# Necessary Lists
-    	SW = args['stopwords']
+    	# SW = args['stopwords']
+    	SW = get_stop_words('english')
     	PUNC = sc.broadcast(string.punctuation)
 	
 	# Generate RDDs of tuples
@@ -158,6 +161,10 @@ if __name__ == "__main__":
 	rdd = rdd.flatMapValues(lambda x: x)\
 		.filter(lambda x: 'CAT' in x[1])
 	rdd = rdd.map(distribute_docid) # <doc_id> <document> <label>
+	
+	# terms = rdd.flatMap(book_to_terms)
+    	# frequencies = terms.map(terms_to_counts).reduceByKey(add)
+	
 	
 	
 	if algorithm == "NB" or algorithm == "LR":
@@ -174,8 +181,9 @@ if __name__ == "__main__":
         	SW = sc.broadcast(stopwords)
         	word_frequencies = top_frequencies.filter(remove_stopwords)
 
-    	(keep going)
-    
+
+		
+		
     	# Naive Bayes
     	if algorithm == "NB":
 
