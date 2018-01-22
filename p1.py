@@ -7,11 +7,16 @@ from operator import add
 
 from pyspark import SparkContext
 
+def distribute_docid(document_list):
+    doc, label = document_list
+    doc_id = document_list.index(doc)
+    return (doc_id, doc, label)
+
 def book_to_terms(book):
     """
         Converts a book to a list of individual words.
         """
-    _, contents = book
+    _, contents, _ = book
     
     # contents.split() will generate a bunch of individual tokens. Each term (word)
     # in this list is then run through a *local* map that strips any remaining
@@ -150,9 +155,9 @@ if __name__ == "__main__":
 
 	# Preprocessing
 	rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
-	full_rdd = rdd.flatMapValues(lambda x: x)
-	valid_rdd = full_rdd.filter(lambda x: 'CAT' in x[1])
-	
+	rdd = rdd.flatMapValues(lambda x: x)\
+		.filter(lambda x: 'CAT' in x[1])
+	rdd = rdd.map(distribute_docid) # <doc_id> <document> <label>
 	
 	
 	if algorithm == "NB" or algorithm == "LR":
