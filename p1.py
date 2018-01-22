@@ -63,7 +63,7 @@ def remove_stopwords(word_count):
     return word not in stopwords
 
 
-def doc2vec(doc_tuple):
+def doc2vec(doc_tuple): #<- <docid> <content> <label>
     """
     This takes the same document tuple that is the output of wholeTextFiles,
     and parses out all the words for a single document, AND builds the
@@ -101,7 +101,7 @@ def doc2vec(doc_tuple):
         # Build a list of (word, vector) tuples. I'm returning them all at
         # one time at the very end, but you could just as easily make use
         # of the "yield" keyword here instead to return them one-at-a-time.
-        out_tuples.append([w, count_vector])
+        out_tuples.append([w, count_vector]) #<- [<word> [count in each doc]]
     return out_tuples
 
 
