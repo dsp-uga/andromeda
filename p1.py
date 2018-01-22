@@ -175,10 +175,11 @@ if __name__ == "__main__":
 	rdd = rdd.flatMapValues(lambda x: x)\
 		.filter(lambda x: 'CAT' in x[1]) #<content> <label_containing_'CAT'>
 	rdd = rdd.map(distribute_docid) # <doc_id> <document> <label>
-	
 
+	doc_numb = rdd.count()
+  	DOCS = sc.broadcast(range(doc_numb))
 	
-	
+	frequency_vectors = rdd.flatMap(doc2vec)	
 	
 	if algorithm == "NB" or algorithm == "LR":
 		terms = rdd.flatMap(book_to_terms)
