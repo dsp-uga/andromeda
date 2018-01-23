@@ -168,7 +168,7 @@ if __name__ == "__main__":
 	rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
 	rdd = rdd.flatMapValues(lambda x: x)\
 		.filter(lambda x: 'CAT' in x[1]) #<content> <label_containing_'CAT'>
-	rdd = rdd.map(distribute_docid) # <doc_id> <document> <label>
+	rdd = rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
 
 	doc_numb = rdd.count()
   	DOCS = sc.broadcast(range(doc_numb))
