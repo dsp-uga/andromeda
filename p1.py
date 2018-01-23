@@ -3,10 +3,11 @@ import json
 import os.path
 import numpy as np
 import string
-from stop_words import get_stop_words
+from nltk.corpus import stopwords
 from collections import Counter
-from nltk.stem.porter import PorterStemmer
-from nltk.stem import WordNetLemmatizer
+# from nltk.stem.porter import PorterStemmer
+# from nltk.stem import WordNetLemmatizer
+from nltk.stem.lancaster import LancasterStemmer
 from operator import add
 
 from pyspark import SparkContext
@@ -84,7 +85,8 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     # Enforce stopwords and minimum length.
     if w in stopwords or len(w) <= 1: continue
     w = check_punctuation(w)
-
+    lancaster_stemmer = LancasterStemmer()
+    w = lancaster_stemmer.stem(w)
     # Build the document-count vector.
     count_vector = np.zeros(N, dtype = np.int)
     count_vector[doc_index] += 1
@@ -163,8 +165,7 @@ if __name__ == "__main__":
   algorithm = args['algorithm']
 
   # Necessary Lists
-#   SW = args['stopwords']
-  SW = get_stop_words('english')
+  SW = sc.broadcast(stopwords.words('english'))
   PUNC = sc.broadcast(string.punctuation)
 
   # Generate RDDs of tuples
