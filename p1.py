@@ -156,44 +156,27 @@ def counts_to_tfidf(word_vector):
 # word_tfidf
 # <doc_id> <word1_tfidf> <word2_tfidf> ... <wordd_tfidf> <label>
 
-counts_mat = np.asarray(rdd.collect())
 
-def counts2sum(counts_mat):
-  """
-  Transform the format from <doc_id> <word1_count> <word2_count> ... <wordd_count> <label>
-  into the format <word1_sum_count> <word2_sum_count> ... <word3_sum_count> <label>
-  """
-  words, labels = counts_mat[:,1:-1], counts_mat[:,-1]
-  labels = np.distinct(labels)
-  labels = labels.reshape(len(labels),1)
-  counts_sum_mat = np.zeros((len(labels), len(words[0])))
-  for ind in range(len(labels)):
-      counts_sum_mat[ind,:] = counts_mat[counts_mat[:,-1]==labels[ind], 1:-1].sum(axis=0)
-  counts_sum_mat = np.concatenate((counts_sum_mat,labels), axis = 1)
-  return counts_sum_mat
-
-counts_sum_mat = counts2sum(counts_mat)
-
-def prior_prob(counts_mat, label):
-  """
-  Calculate the probability of a specific label: P(y)
-  inputting format: <word1_count> <word2_count> ... <wordd_count> <label>
-  """
-  num_label = (counts_mat[:,-1]==label).sum()
-  num_doc = len(counts_mat)
-  prior_prob = num_label / num_doc
-  return prior_prob
-
-def cond_prob(counts_mat, word_id, label):
-  """
-  Calculate the probability of a word, given specific label: P_hat(x_i|y)
-  inputting format: <word1_count> <word2_count> ... <wordd_count> <label>
-  """
-  words_counts = counts_mat[counts_mat[:,-1]==label, word_id].sum(axis = 0)
-  all_counts = counts_mat[counts_mat[:,-1]==label, 1:].sum()
-  cond_prob = words_counts / all_counts
-  return cond_prob
-
+def NBtraining(rdd):
+    """
+    Transform rdd form from <word1_count> <word2_count> ... <wordd_count> <label>
+    into <label> <word1_cond_prob> <word2_cond_prob> ... <wordd_cond_prob> <prior_prob>
+    """
+    df = spark.createDataFrame(rdd)
+    df = df.withColumnRenamed(df.schema.names[-1], "label")
+    # conditional probability
+    df_sum = df.groupBy("label").sum()
+    rdd_cond = df_sum.rdd.map(tuple)\
+                    .map(lambda x: (x[0], np.array(x[1:])/np.sum(x[1:])))
+    # prior probability
+    df_prior = df.group("label").count()\
+                    .withColumn("count", F.col("count")/df.count())
+    rdd_prior = df_prior.rdd.map(tuple)\
+                    .map(lambda x: (x[0], np.array(x[1])))
+    # weights matrix
+    rdd = rdd_cond.leftOuterJoin(rdd_prior)\
+                    .map(lambda x: (x[0], np.append(x[1][0],x[1][1])))
+    return rdd
 
 ##################################################
 
@@ -244,9 +227,17 @@ if __name__ == "__main__":
 
   doc_numb = rdd.count()
   DOCS = sc.broadcast(range(doc_numb))
+  frequency_vectors = rdd.map(doc2vec)
 
-  # frequency_vectors = rdd.map(doc2vec)
-  # print(frequency_vectors.take(3))
+################
 
+# other preprocessing steps
+
+################
 
   # Naive Bayes classifier
+
+  # training
+  rdd = NBtraining(rdd)
+  # log-transformation << check if want other smoothing
+  rdd = rdd.map(lambda x: (x[0], np.log(x[1])))
