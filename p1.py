@@ -18,7 +18,6 @@ def book_to_terms(book):
     """
         Converts a book to a list of individual words.
         """
-#     _, contents, _ = book
     _, contents = book
     
     # contents.split() will generate a bunch of individual tokens. Each term (word)
@@ -70,7 +69,6 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     document-specific count vectors for each word.
     """
     docid, content, label = doc_tuple
-#     docid = docname.split("/")[-1].split(".")[0] # Extract filename.
 
     # This is how we know what document we're in--i.e., what document
     # count to increment in the count array.
@@ -88,11 +86,6 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
         # Enforce stopwords and minimum length.
         if w in stopwords or len(w) <= 1: continue
 	w = check_punctuation(w)
-#         # Enforce punctuation.
-#         if w[0] in punctuation:
-#             w = w[1:]
-#         if w[-1] in punctuation:
-#             w = w[:-1]
 
         # Build the document-count vector.
         count_vector = np.zeros(N, dtype = np.int)
@@ -127,6 +120,7 @@ def remove_punctuation_from_end(word):
     return word
 
 def check_punctuation(word):
+    punctuation = PUNC.value
     while len(word)>0 and (word[0] in punctuation or word[-1] in punctuation):
         word = remove_punctuation_from_end(word)
     return word
@@ -179,27 +173,10 @@ if __name__ == "__main__":
 	doc_numb = rdd.count()
   	DOCS = sc.broadcast(range(doc_numb))
 	
-	frequency_vectors = rdd.flatMap(doc2vec)	
+	frequency_vectors = rdd.map(doc2vec)	
 	
-	if algorithm == "NB" or algorithm == "LR":
-		terms = rdd.flatMap(book_to_terms)
-        	frequencies = terms.map(terms_to_counts) \
-			.reduceByKey(combine_by_word)
-        	top_frequencies = frequencies.filter(count_threshold) \
-			.persist()
-
-	# Remove the stop words if stopwords.txt is given
-    	word_frequencies = top_frequencies
-    	if not (stopwords is None):
-        	stopwords = np.loadtxt(stopwords, dtype = np.str).tolist()
-        	SW = sc.broadcast(stopwords)
-        	word_frequencies = top_frequencies.filter(remove_stopwords)
-
-
-		
-		
-    	# Naive Bayes
-    	if algorithm == "NB":
-
-    	# Logistic Regression
-    	# else algorithm = "LR":	
+	
+	
+	
+# 	keep going
+	
