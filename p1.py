@@ -3,6 +3,9 @@ import json
 import os.path
 import numpy as np
 import string
+import nltk
+# nltk.download('stopwords')
+from nltk.corpus import stopwords
 from stop_words import get_stop_words
 from collections import Counter
 from nltk.stem.porter import PorterStemmer
@@ -10,6 +13,7 @@ from nltk.stem import WordNetLemmatizer
 from operator import add
 
 from pyspark import SparkContext
+from pyspark.sql import SparkSession
 
 
 def book_to_terms(book):
@@ -23,11 +27,13 @@ def book_to_terms(book):
   words = list(map(lambda word: word.strip().lower(), contents.split()))
   return words
 
+
 def terms_to_counts(term):
   """
   Converts each term to a tuple with a count of 1.
   """
   return (term, 1)
+
 
 def combine_by_word(count1, count2):
   """
@@ -38,12 +44,14 @@ def combine_by_word(count1, count2):
   """
   return count1 + count2
 
+
 def count_threshold(word_count):
   """
   Drops any word counts less than 2.
   """
   word, count = word_count
   return count > 2
+
 
 def remove_stopwords(word_count):
   """
@@ -57,7 +65,6 @@ def remove_stopwords(word_count):
   # are filtered out of the RDD), so you want this statement to evaluate to
   # TRUE for words you want to keep (i.e., words NOT in the stopwords list).
   return word not in stopwords
-
 
 
 def doc2vec(doc_tuple): #<- <docid> <content> <label>
@@ -95,6 +102,7 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     out_tuples.append([w, count_vector]) #<- [<word> [count in each doc]]
   return out_tuples
 
+
 def remove_punctuation_from_end(word):
   punctuation = PUNC.value
   if len(word)>0 and word[0] in punctuation:
@@ -102,6 +110,7 @@ def remove_punctuation_from_end(word):
   if len(word)>0 and word[-1] in punctuation:
     word = word[:-1]
   return word
+
 
 def check_punctuation(word):
   punctuation = PUNC.value
@@ -136,22 +145,74 @@ def counts_to_tfidf(word_vector):
   tfidf = np.array([tf * idf for tf in vector])
   return (word, tfidf)
 
+##################################################
+# naive bayes script
+
+# input format
+# word_counts
+# <doc_id> <word1_count> <word2_count> ... <wordd_count> <label>
+# word_tfidf
+# <doc_id> <word1_tfidf> <word2_tfidf> ... <wordd_tfidf> <label>
+
+counts_mat = np.asarray(rdd.collect())
+
+def counts2sum(counts_mat):
+  """
+  Transform the format from <doc_id> <word1_count> <word2_count> ... <wordd_count> <label>
+  into the format <word1_sum_count> <word2_sum_count> ... <word3_sum_count> <label>
+  """
+  words, labels = counts_mat[:,1:-1], counts_mat[:,-1]
+  labels = np.distinct(labels)
+  labels = labels.reshape(len(labels),1)
+  counts_sum_mat = np.zeros((len(labels), len(words[0])))
+  for ind in range(len(labels)):
+      counts_sum_mat[ind,:] = counts_mat[counts_mat[:,-1]==labels[ind], 1:-1].sum(axis=0)
+  counts_sum_mat = np.concatenate((counts_sum_mat,labels), axis = 1)
+  return counts_sum_mat
+
+counts_sum_mat = counts2sum(counts_mat)
+
+def prior_prob(counts_mat, label):
+  """
+  Calculate the probability of a specific label: P(y)
+  inputting format: <word1_count> <word2_count> ... <wordd_count> <label>
+  """
+  num_label = (counts_mat[:,-1]==label).sum()
+  num_doc = len(counts_mat)
+  prior_prob = num_label / num_doc
+  return prior_prob
+
+def cond_prob(counts_mat, word_id, label):
+  """
+  Calculate the probability of a word, given specific label: P_hat(x_i|y)
+  inputting format: <word1_count> <word2_count> ... <wordd_count> <label>
+  """
+  words_counts = counts_mat[counts_mat[:,-1]==label, word_id].sum(axis = 0)
+  all_counts = counts_mat[counts_mat[:,-1]==label, 1:].sum()
+  cond_prob = words_counts / all_counts
+  return cond_prob
+
+
+##################################################
+
+
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
 		epilog = "answer key", add_help = "How to use",
 		prog = "python p1.py [train-data] [train-label] [test-data] [optional args]")
 
-	# Required args
-	parser.add_argument("paths", required = True, nargs=3,
-		help = "Paths of training-data, training-labels, and testing-data.")
+  # Required args
+  parser.add_argument("paths", nargs=3, #required = True
+    help = "Paths of training-data, training-labels, and testing-data.")
 
   # Optional args
 # 	parser.add_argument("-s", "--stopwords", default = None,
 # 	        help = "Path to a file containing stopwords. [DEFAULT: None]")
   parser.add_argument("-a", "--algorithm", choices = ["NB", "LR"], default = "NB",
-		help = "Algorithms to process classification: \"NB\": Naive Bayes, \"LR\": Logistic Regression [Default: Naive Bayes]")
+	help = "Algorithms to process classification: \"NB\": Naive Bayes, \"LR\": Logistic Regression [Default: Naive Bayes]")
   parser.add_argument("-o", "--output", default = ".",
-        help = "Path to the output directory where outputs will be written. [Default: \".\"]")
+    help = "Path to the output directory where outputs will be written. [Default: \".\"]")
 
   args = vars(parser.parse_args())
   sc = SparkContext()
@@ -163,8 +224,8 @@ if __name__ == "__main__":
   algorithm = args['algorithm']
 
   # Necessary Lists
-#   SW = args['stopwords']
-  SW = get_stop_words('english')
+  # SW = args['stopwords']
+  SW = stopwords.words('english')
   PUNC = sc.broadcast(string.punctuation)
 
   # Generate RDDs of tuples
@@ -177,17 +238,15 @@ if __name__ == "__main__":
   # Preprocessing
   rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
   rdd = rdd.flatMapValues(lambda x: x)\
-		.filter(lambda x: 'CAT' in x[1]) #<content> <label_containing_'CAT'>
+		.filter(lambda x: 'CAT' in x[1]) # <content> <label_containing_'CAT'>
   rdd = rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
 
   doc_numb = rdd.count()
   DOCS = sc.broadcast(range(doc_numb))
-	
-  frequency_vectors = rdd.map(doc2vec)	
-	
-	
-	
-	
-# 	keep going
-	
 
+  # frequency_vectors = rdd.map(doc2vec)
+  # print(frequency_vectors.take(3))
+
+
+  # Naive Bayes classifier
+  rdd = rdd.map()
