@@ -250,4 +250,3 @@ if __name__ == "__main__":
 
 
   # Naive Bayes classifier
-  rdd = rdd.map()
