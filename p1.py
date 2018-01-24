@@ -148,15 +148,54 @@ def counts_to_tfidf(word_vector):
   return (word, tfidf)
 
 ##################################################
-# naive bayes script
+# naive bayes
 
-# input format
-# word_counts
-# <doc_id> <word1_count> <word2_count> ... <wordd_count> <label>
-# word_tfidf
-# <doc_id> <word1_tfidf> <word2_tfidf> ... <wordd_tfidf> <label>
+def cond_prob(word_list):
+    total_count = 0
+    for i in range(len(word_list)):
+        total_count += word_list[i][1]
+    for i in range(len(word_list)):
+        word_list[i] = (word_list[i][0], word_list[i][1] / total_count)
+    return word_list
 
 
+def cond_prob_rdd(cp_rdd, rdd):
+    labels = rdd.map(lambda x: x[0]).distinct().collect()
+
+    for ind in range(len(labels)):
+        rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
+        rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
+
+        list_same_label = rdd_same_label.flatMap(lambda x: tuple(x[1])).reduceByKey(add).collect()
+        sum_count_in_label = rdd_label.map(lambda x: (x, list_same_label))
+        rdd_cond_prob = sum_count_in_label.map(lambda x: (x[0], cond_prob(x[1])))
+        cp_rdd = cp_rdd.union(rdd_cond_prob)
+    return cp_rdd
+
+
+def prior_prob_rdd(pp_rdd, rdd):
+    doc_num = rdd.count()
+    labels = rdd.map(lambda x: x[0]).distinct().collect()
+
+    for ind in range(len(labels)):
+        rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
+        rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
+
+        doc_num_same_label = rdd_same_label.count()
+        rdd_prior_prob = rdd_label.map(lambda x: (x, doc_num_same_label/doc_num))
+        pp_rdd = pp_rdd.union(rdd_prior_prob)
+    return pp_rdd
+
+
+# in rdd
+def NBtraining(cp_rdd, pp_rdd):
+  # <label> [(w1, cnt1), (w2, cnt2), ..., (wd,cntd)]
+  rdd = cp_rdd.leftOuterJoin(pp_rdd)\
+            .map(lambda x: (x[0], [x[1][0], x[1][1]]))
+  #maybe more transformation here
+  return rdd
+
+# in dataframe
 def NBtraining(rdd):
     """
     Transform rdd form from <word1_count> <word2_count> ... <wordd_count> <label>
@@ -221,9 +260,9 @@ if __name__ == "__main__":
 
   # Preprocessing
   rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
-  rdd = rdd.flatMapValues(lambda x: x)\
-		.filter(lambda x: 'CAT' in x[1]) # <content> <label_containing_'CAT'>
-  rdd = rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
+  valid_rdd = rdd.flatMapValues(lambda x: x)\
+                .filter(lambda x: 'CAT' in x[1]) # <content> <label_containing_'CAT'>
+  rdd = valid_rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
 
   doc_numb = rdd.count()
   DOCS = sc.broadcast(range(doc_numb))
@@ -237,7 +276,14 @@ if __name__ == "__main__":
 
   # Naive Bayes classifier
 
+
   # training
-  rdd = NBtraining(rdd)
+  cp_rdd = sc.parallelize([])
+  cp_rdd = cond_prob_rdd(cp_rdd, rdd)
+  pp_rdd = sc.parallelize([])
+  pp_rdd = prior_prob_rdd(pp_rdd, rdd)
+  rdd = NBtraining(cp_rdd, pp_rdd)
+
+
   # log-transformation << check if want other smoothing
   rdd = rdd.map(lambda x: (x[0], np.log(x[1])))
