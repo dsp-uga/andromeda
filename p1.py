@@ -131,6 +131,58 @@ def check_punctuation(word):
 #         word = strip[0]
 #     return word
 
+def combine_by_doc(list_1,list_2):
+  new_list = []
+  for i in range(len(list_1)):
+    new_list.append([list_1[i][0],list_1[i][1],list_1[i][2]+list_2[i][2]])
+  return new_list
+
+def get_things_out(x):
+    count_list = x[1]
+    list_to_return = []
+    for i in range(len(count_list)):
+        list_to_return.append([x[0],count_list[i]])
+    return list_to_return
+
+def get_label_out(list_1,list_2):
+    return [list_1[0][0],[list_1[0][1:]]+[list_2[0][1:]]]
+
+def wordSpec2docSpec(wordSpec_rdd):
+  summed_wordSpec_rdd = rdd.reduceByKey(combine_by_doc) 
+  #should still be['word',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]]
+  #but no duplicate words
+
+  rdd_flat = summed_wordSpec_rdd.flatMap(get_things_out)
+  #rdd[[<'word0'>,[<docid0>,<label0>,<count>]],...,[<'word0'>,[<docidN>,<labelN>,<count>]],
+  #    [<'word1'>,[<docid0>,<label0>,<count>]],...,[<'word1'>,[<docidN>,<labelN>,<count>]],
+  #    ...]
+  #pair word with each document count and flat everything out
+	
+  rdd_flat_release = rdd_flat.map(lambda x: (x[1][0],[[x[1][1],x[0],x[1][2]]]))
+  #rdd[[<docid0>,[<label0>,<'word0'>,<count>]],...,[<docidN>,[<labelN>,<'word0'>,<count>]],
+  #    [<docid0>,[<label0>,<'word1'>,<count>]],...,[<docidN>,[<labelN>,<'word1'>,<count>]],
+  #    ...]
+  #move everything into right place
+	
+  docid_rdd = rdd_flat_release.reduceByKey(get_label_out)
+  #rdd[[<docid0>,[<label0>,[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  #    ...
+  #    [<docidN>,[<label0>,[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+  #extracting the label
+
+  docid_label_rdd = docid_rdd.map(lambda x: ((x[0],x[1][0]),x[1][1]))
+  #rdd[[(<docid0>,<label0>),[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  #    ...
+  #    [(<docidN>,<label0>),[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+  #move the label out
+  #just in case we need this version of data structure
+
+  label_spec_rdd = docid_rdd.map(lambda x: (x[1][0],x[1][1]))
+  #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  #    ...
+  #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+  #move the label out and delete the document id
+  return label_spec_rdd, docid_label_rdd
 
 # def counts_to_tfidf(word_vector):
 #   """
@@ -202,7 +254,10 @@ if __name__ == "__main__":
 		       					#       ['word1',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]],
 							#        ...])
   ####################need debugging#######################
-
+  doc_spec_frequency_vectors, with_id = wordSpec2docSpec(word_specific_frequency_vectors)
+  #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  #    ...
+  #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
 
 	
 	
