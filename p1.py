@@ -95,13 +95,20 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     lancaster_stemmer = LancasterStemmer()
     w = lancaster_stemmer.stem(w)
     # Build the document-count vector.
-    count_vector = np.zeros(N, dtype = np.int)
-    count_vector[doc_index] += 1
+    count_vector = np.zeros(N)
+    for i in range(N):
+      count_vector[i] = [i, label, 0] #-> initialize [[<docid(0)>, <label>, <count(0)>],
+                                      # 	      [<docid(1)>, <label>, <count(0)>],
+                                      # 	      [<docid(2)>, <label>, <count(0)>],...]
+    
+    count_vector[doc_index][2] += 1
 
     # Build a list of (word, vector) tuples. I'm returning them all at
     # one time at the very end, but you could just as easily make use
     # of the "yield" keyword here instead to return them one-at-a-time.
-    out_tuples.append([w, count_vector]) #<- [<word> [count in each doc]]
+    out_tuples.append([w, count_vector]) #<- [<word> [[<docid(0)>, <label(0)>, <count>],
+                                      # 	      [<docid(1)>, <label(1)>, <count>],
+                                      # 	      [<docid(2)>, <label(0)>, <count>],...]]
   return out_tuples
 
 
@@ -133,19 +140,71 @@ def check_punctuation(word):
 #         word = strip[0]
 #     return word
 
+def combine_by_doc(list_1,list_2):
+  new_list = []
+  for i in range(len(list_1)):
+    new_list.append([list_1[i][0],list_1[i][1],list_1[i][2]+list_2[i][2]])
+  return new_list
 
-def counts_to_tfidf(word_vector):
-  """
-  Computes the TF-IDF scores for each term-vector pair.
-  """
-  word, vector = word_vector
-  N = vector.shape[0]
-  nt = vector[vector > 0].shape[0] # Number of documents in which word appears.
+def get_things_out(x):
+  count_list = x[1]
+  list_to_return = []
+  for i in range(len(count_list)):
+    list_to_return.append([x[0],count_list[i]])
+  return list_to_return
 
-  # Compute IDF and TF-IDF.
-  idf = np.log(N / nt)
-  tfidf = np.array([tf * idf for tf in vector])
-  return (word, tfidf)
+def get_label_out(list_1,list_2):
+  return [list_1[0][0],[list_1[0][1:]]+[list_2[0][1:]]]
+
+def wordSpec2docSpec(wordSpec_rdd):
+  summed_wordSpec_rdd = rdd.reduceByKey(combine_by_doc) 
+  #should still be['word',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]]
+  #but no duplicate words
+
+  rdd_flat = summed_wordSpec_rdd.flatMap(get_things_out)
+  #rdd[[<'word0'>,[<docid0>,<label0>,<count>]],...,[<'word0'>,[<docidN>,<labelN>,<count>]],
+  #    [<'word1'>,[<docid0>,<label0>,<count>]],...,[<'word1'>,[<docidN>,<labelN>,<count>]],
+  #    ...]
+  #pair word with each document count and flat everything out
+	
+  rdd_flat_release = rdd_flat.map(lambda x: (x[1][0],[[x[1][1],x[0],x[1][2]]]))
+  #rdd[[<docid0>,[<label0>,<'word0'>,<count>]],...,[<docidN>,[<labelN>,<'word0'>,<count>]],
+  #    [<docid0>,[<label0>,<'word1'>,<count>]],...,[<docidN>,[<labelN>,<'word1'>,<count>]],
+  #    ...]
+  #move everything into right place
+	
+  docid_rdd = rdd_flat_release.reduceByKey(get_label_out)
+  #rdd[[<docid0>,[<label0>,[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  #    ...
+  #    [<docidN>,[<label0>,[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+  #extracting the label
+
+  docid_label_rdd = docid_rdd.map(lambda x: ((x[0],x[1][0]),x[1][1]))
+  #rdd[[(<docid0>,<label0>),[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  #    ...
+  #    [(<docidN>,<label0>),[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+  #move the label out
+  #just in case we need this version of data structure
+
+  label_spec_rdd = docid_rdd.map(lambda x: (x[1][0],x[1][1]))
+  #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  #    ...
+  #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+  #move the label out and delete the document id
+  return label_spec_rdd, docid_label_rdd
+
+# def counts_to_tfidf(word_vector):
+#   """
+#   Computes the TF-IDF scores for each term-vector pair.
+#   """
+#   word, vector = word_vector
+#   N = vector.shape[0]
+#   nt = vector[vector > 0].shape[0] # Number of documents in which word appears.
+
+#   # Compute IDF and TF-IDF.
+#   idf = np.log(N / nt)
+#   tfidf = np.array([tf * idf for tf in vector])
+#   return (word, tfidf)
 
 ##################################################
 # naive bayes
@@ -260,13 +319,39 @@ if __name__ == "__main__":
 
   # Preprocessing
   rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
-  valid_rdd = rdd.flatMapValues(lambda x: x)\
-                .filter(lambda x: 'CAT' in x[1]) # <content> <label_containing_'CAT'>
-  rdd = valid_rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
 
-  doc_numb = rdd.count()
-  DOCS = sc.broadcast(range(doc_numb))
-  frequency_vectors = rdd.map(doc2vec)
+  valid_rdd = rdd.flatMapValues(lambda x: x)\
+		.filter(lambda x: 'CAT' in x[1]) #<content> <label_containing_'CAT'>
+  
+#   valid_labels = rdd.map(lambda x: x[1]).collect()
+#   LABELS = sc.broadcast(valid_labels)
+  	
+  rdd_to_split = valid_rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
+
+#   doc_numb = rdd.count()
+#   DOCS = sc.broadcast(range(doc_numb))
+#   frequency_vectors = rdd.map(doc2vec)
+  
+  doc_index = rdd_to_split.map(lambda x: x[0]).collect()
+  DOCS = sc.broadcast(doc_index)
+
+  ####################need debugging#######################
+  word_specific_frequency_vectors = rdd_to_split.map(doc2vec)	#->not sure map or flatMap 
+								#->Should look like 
+							#  rdd([['word0',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]],
+		       					#       ['word1',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]],
+							#        ...])
+  ####################need debugging#######################
+  doc_spec_frequency_vectors, with_id = wordSpec2docSpec(word_specific_frequency_vectors)
+  #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  #    ...
+  #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+
+	
+	
+	
+# 	keep going
+
 
 ################
 
@@ -283,6 +368,7 @@ if __name__ == "__main__":
   pp_rdd = sc.parallelize([])
   pp_rdd = prior_prob_rdd(pp_rdd, rdd)
   rdd = NBtraining(cp_rdd, pp_rdd)
+
 
 
   # log-transformation << check if want other smoothing
