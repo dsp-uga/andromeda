@@ -3,7 +3,10 @@ import json
 import os.path
 import numpy as np
 import string
+import nltk
+# nltk.download('stopwords')
 from nltk.corpus import stopwords
+from stop_words import get_stop_words
 from collections import Counter
 # from nltk.stem.porter import PorterStemmer
 # from nltk.stem import WordNetLemmatizer
@@ -11,6 +14,7 @@ from nltk.stem.lancaster import LancasterStemmer
 from operator import add
 
 from pyspark import SparkContext
+from pyspark.sql import SparkSession
 
 
 def book_to_terms(book):
@@ -24,11 +28,13 @@ def book_to_terms(book):
   words = list(map(lambda word: word.strip().lower(), contents.split()))
   return words
 
+
 def terms_to_counts(term):
   """
   Converts each term to a tuple with a count of 1.
   """
   return (term, 1)
+
 
 def combine_by_word(count1, count2):
   """
@@ -39,12 +45,14 @@ def combine_by_word(count1, count2):
   """
   return count1 + count2
 
+
 def count_threshold(word_count):
   """
   Drops any word counts less than 2.
   """
   word, count = word_count
   return count > 2
+
 
 def remove_stopwords(word_count):
   """
@@ -58,7 +66,6 @@ def remove_stopwords(word_count):
   # are filtered out of the RDD), so you want this statement to evaluate to
   # TRUE for words you want to keep (i.e., words NOT in the stopwords list).
   return word not in stopwords
-
 
 
 def doc2vec(doc_tuple): #<- <docid> <content> <label>
@@ -104,6 +111,7 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
                                       # 	      [<docid(2)>, <label(0)>, <count>],...]]
   return out_tuples
 
+
 def remove_punctuation_from_end(word):
   punctuation = PUNC.value
   if len(word)>0 and word[0] in punctuation:
@@ -111,6 +119,7 @@ def remove_punctuation_from_end(word):
   if len(word)>0 and word[-1] in punctuation:
     word = word[:-1]
   return word
+
 
 def check_punctuation(word):
   punctuation = PUNC.value
@@ -138,14 +147,14 @@ def combine_by_doc(list_1,list_2):
   return new_list
 
 def get_things_out(x):
-    count_list = x[1]
-    list_to_return = []
-    for i in range(len(count_list)):
-        list_to_return.append([x[0],count_list[i]])
-    return list_to_return
+  count_list = x[1]
+  list_to_return = []
+  for i in range(len(count_list)):
+    list_to_return.append([x[0],count_list[i]])
+  return list_to_return
 
 def get_label_out(list_1,list_2):
-    return [list_1[0][0],[list_1[0][1:]]+[list_2[0][1:]]]
+  return [list_1[0][0],[list_1[0][1:]]+[list_2[0][1:]]]
 
 def wordSpec2docSpec(wordSpec_rdd):
   summed_wordSpec_rdd = rdd.reduceByKey(combine_by_doc) 
@@ -197,22 +206,96 @@ def wordSpec2docSpec(wordSpec_rdd):
 #   tfidf = np.array([tf * idf for tf in vector])
 #   return (word, tfidf)
 
+##################################################
+# naive bayes
+
+def cond_prob(word_list):
+    total_count = 0
+    for i in range(len(word_list)):
+        total_count += word_list[i][1]
+    for i in range(len(word_list)):
+        word_list[i] = (word_list[i][0], word_list[i][1] / total_count)
+    return word_list
+
+
+def cond_prob_rdd(cp_rdd, rdd):
+    labels = rdd.map(lambda x: x[0]).distinct().collect()
+
+    for ind in range(len(labels)):
+        rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
+        rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
+
+        list_same_label = rdd_same_label.flatMap(lambda x: tuple(x[1])).reduceByKey(add).collect()
+        sum_count_in_label = rdd_label.map(lambda x: (x, list_same_label))
+        rdd_cond_prob = sum_count_in_label.map(lambda x: (x[0], cond_prob(x[1])))
+        cp_rdd = cp_rdd.union(rdd_cond_prob)
+    return cp_rdd
+
+
+def prior_prob_rdd(pp_rdd, rdd):
+    doc_num = rdd.count()
+    labels = rdd.map(lambda x: x[0]).distinct().collect()
+
+    for ind in range(len(labels)):
+        rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
+        rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
+
+        doc_num_same_label = rdd_same_label.count()
+        rdd_prior_prob = rdd_label.map(lambda x: (x, doc_num_same_label/doc_num))
+        pp_rdd = pp_rdd.union(rdd_prior_prob)
+    return pp_rdd
+
+
+# in rdd
+def NBtraining(cp_rdd, pp_rdd):
+  # <label> [(w1, cnt1), (w2, cnt2), ..., (wd,cntd)]
+  rdd = cp_rdd.leftOuterJoin(pp_rdd)\
+            .map(lambda x: (x[0], [x[1][0], x[1][1]]))
+  #maybe more transformation here
+  return rdd
+
+# in dataframe
+def NBtraining(rdd):
+    """
+    Transform rdd form from <word1_count> <word2_count> ... <wordd_count> <label>
+    into <label> <word1_cond_prob> <word2_cond_prob> ... <wordd_cond_prob> <prior_prob>
+    """
+    df = spark.createDataFrame(rdd)
+    df = df.withColumnRenamed(df.schema.names[-1], "label")
+    # conditional probability
+    df_sum = df.groupBy("label").sum()
+    rdd_cond = df_sum.rdd.map(tuple)\
+                    .map(lambda x: (x[0], np.array(x[1:])/np.sum(x[1:])))
+    # prior probability
+    df_prior = df.group("label").count()\
+                    .withColumn("count", F.col("count")/df.count())
+    rdd_prior = df_prior.rdd.map(tuple)\
+                    .map(lambda x: (x[0], np.array(x[1])))
+    # weights matrix
+    rdd = rdd_cond.leftOuterJoin(rdd_prior)\
+                    .map(lambda x: (x[0], np.append(x[1][0],x[1][1])))
+    return rdd
+
+##################################################
+
+
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
 		epilog = "answer key", add_help = "How to use",
 		prog = "python p1.py [train-data] [train-label] [test-data] [optional args]")
 
-	# Required args
-	parser.add_argument("paths", required = True, nargs=3,
-		help = "Paths of training-data, training-labels, and testing-data.")
+  # Required args
+  parser.add_argument("paths", nargs=3, #required = True
+    help = "Paths of training-data, training-labels, and testing-data.")
 
   # Optional args
 # 	parser.add_argument("-s", "--stopwords", default = None,
 # 	        help = "Path to a file containing stopwords. [DEFAULT: None]")
   parser.add_argument("-a", "--algorithm", choices = ["NB", "LR"], default = "NB",
-		help = "Algorithms to process classification: \"NB\": Naive Bayes, \"LR\": Logistic Regression [Default: Naive Bayes]")
+	help = "Algorithms to process classification: \"NB\": Naive Bayes, \"LR\": Logistic Regression [Default: Naive Bayes]")
   parser.add_argument("-o", "--output", default = ".",
-        help = "Path to the output directory where outputs will be written. [Default: \".\"]")
+    help = "Path to the output directory where outputs will be written. [Default: \".\"]")
 
   args = vars(parser.parse_args())
   sc = SparkContext()
@@ -236,14 +319,19 @@ if __name__ == "__main__":
 
   # Preprocessing
   rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
-  rdd = rdd.flatMapValues(lambda x: x)\
-		.filter(lambda x: 'CAT' in x[1]).persist() #<content> <label_containing_'CAT'>
+
+  valid_rdd = rdd.flatMapValues(lambda x: x)\
+		.filter(lambda x: 'CAT' in x[1]) #<content> <label_containing_'CAT'>
   
 #   valid_labels = rdd.map(lambda x: x[1]).collect()
 #   LABELS = sc.broadcast(valid_labels)
   	
-  rdd_to_split = rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
+  rdd_to_split = valid_rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
 
+#   doc_numb = rdd.count()
+#   DOCS = sc.broadcast(range(doc_numb))
+#   frequency_vectors = rdd.map(doc2vec)
+  
   doc_index = rdd_to_split.map(lambda x: x[0]).collect()
   DOCS = sc.broadcast(doc_index)
 
@@ -263,5 +351,25 @@ if __name__ == "__main__":
 	
 	
 # 	keep going
-	
 
+
+################
+
+# other preprocessing steps
+
+################
+
+  # Naive Bayes classifier
+
+
+  # training
+  cp_rdd = sc.parallelize([])
+  cp_rdd = cond_prob_rdd(cp_rdd, rdd)
+  pp_rdd = sc.parallelize([])
+  pp_rdd = prior_prob_rdd(pp_rdd, rdd)
+  rdd = NBtraining(cp_rdd, pp_rdd)
+
+
+
+  # log-transformation << check if want other smoothing
+  rdd = rdd.map(lambda x: (x[0], np.log(x[1])))
