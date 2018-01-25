@@ -88,13 +88,20 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     lancaster_stemmer = LancasterStemmer()
     w = lancaster_stemmer.stem(w)
     # Build the document-count vector.
-    count_vector = np.zeros(N, dtype = np.int)
-    count_vector[doc_index] += 1
+    count_vector = np.zeros(N)
+    for i in range(N):
+      count_vector[i] = [i, label, 0] #-> initialize [[<docid(0)>, <label>, <count(0)>],
+                                      # 	      [<docid(1)>, <label>, <count(0)>],
+                                      # 	      [<docid(2)>, <label>, <count(0)>],...]
+    
+    count_vector[doc_index][2] += 1
 
     # Build a list of (word, vector) tuples. I'm returning them all at
     # one time at the very end, but you could just as easily make use
     # of the "yield" keyword here instead to return them one-at-a-time.
-    out_tuples.append([w, count_vector]) #<- [<word> [count in each doc]]
+    out_tuples.append([w, count_vector]) #<- [<word> [[<docid(0)>, <label(0)>, <count>],
+                                      # 	      [<docid(1)>, <label(1)>, <count>],
+                                      # 	      [<docid(2)>, <label(0)>, <count>],...]]
   return out_tuples
 
 def remove_punctuation_from_end(word):
@@ -125,18 +132,18 @@ def check_punctuation(word):
 #     return word
 
 
-def counts_to_tfidf(word_vector):
-  """
-  Computes the TF-IDF scores for each term-vector pair.
-  """
-  word, vector = word_vector
-  N = vector.shape[0]
-  nt = vector[vector > 0].shape[0] # Number of documents in which word appears.
+# def counts_to_tfidf(word_vector):
+#   """
+#   Computes the TF-IDF scores for each term-vector pair.
+#   """
+#   word, vector = word_vector
+#   N = vector.shape[0]
+#   nt = vector[vector > 0].shape[0] # Number of documents in which word appears.
 
-  # Compute IDF and TF-IDF.
-  idf = np.log(N / nt)
-  tfidf = np.array([tf * idf for tf in vector])
-  return (word, tfidf)
+#   # Compute IDF and TF-IDF.
+#   idf = np.log(N / nt)
+#   tfidf = np.array([tf * idf for tf in vector])
+#   return (word, tfidf)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
@@ -178,14 +185,25 @@ if __name__ == "__main__":
   # Preprocessing
   rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
   rdd = rdd.flatMapValues(lambda x: x)\
-		.filter(lambda x: 'CAT' in x[1]) #<content> <label_containing_'CAT'>
-  rdd = rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
+		.filter(lambda x: 'CAT' in x[1]).persist() #<content> <label_containing_'CAT'>
+  
+#   valid_labels = rdd.map(lambda x: x[1]).collect()
+#   LABELS = sc.broadcast(valid_labels)
+  	
+  rdd_to_split = rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1])) # <doc_id> <content> <label>
 
-  doc_numb = rdd.count()
-  DOCS = sc.broadcast(range(doc_numb))
-	
-  frequency_vectors = rdd.map(doc2vec)	
-	
+  doc_index = rdd_to_split.map(lambda x: x[0]).collect()
+  DOCS = sc.broadcast(doc_index)
+
+  ####################need debugging#######################
+  word_specific_frequency_vectors = rdd_to_split.map(doc2vec)	#->not sure map or flatMap 
+								#->Should look like 
+							#  rdd([['word0',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]],
+		       					#       ['word1',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]],
+							#        ...])
+  ####################need debugging#######################
+
+
 	
 	
 	
