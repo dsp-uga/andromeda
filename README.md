@@ -113,7 +113,11 @@ Give an example
 
 Add additional notes about how to deploy this on a live system
 
-## Built With
+## Issues when Running for the First Time
+
+The Issue are documented in the issues Tab
+
+[ISSUES](https://github.com/dsp-uga/team-andromeda-p1/issues)
 
 
 ## Contributing
