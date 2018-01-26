@@ -116,9 +116,6 @@ def get_things_out(x):
         list_to_return.append([x[0],count_list[i]])
     return list_to_return
 
-def get_label_out(list_1,list_2):
-    return [list_1[0][0],[list_1[0][1:]]+[list_2[0][1:]]]
-
 def wordSpec2docSpec(wordSpec_rdd):
     summed_wordSpec_rdd = rdd.reduceByKey(combine_by_doc)
     #should still be['word',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]]
@@ -143,7 +140,6 @@ def wordSpec2docSpec(wordSpec_rdd):
     #    ((<docidN>,<labelN>),[[<'word0'>,<count>]]),
     #    ((<docidN>,<labelN>),[[<'word1'>,<count>]])]
     #extracting the label
-
     docid_label_rdd = docid_rdd.reduceByKey(lambda x,y: x+y)
     #rdd[[(<docid0>,<label0>),[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
     #    ...
@@ -345,10 +341,6 @@ if __name__ == "__main__":
     #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
     #    ...
     #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
-
-    ################
-    # other preprocessing steps
-    ################
 
     # Naive Bayes classifier
     v = #number of distinct words in training set
