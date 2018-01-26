@@ -174,7 +174,7 @@ def laplace_smoothing(word_count_in_label, count_in_label):
     """
     v = V.value
     nominator = word_count_in_label + 1
-    denominator = count_in_label + v + 1
+    denominator = count_in_label + v
     cond_prob = nominator / denominator
     return cond_prob
 
@@ -252,7 +252,7 @@ def words_list(textfile_rdd):
 def predict(train_list):
     """
     This determines the cond_prob of those words in both training and inputting sets
-    are log(cond_prob), otherwise cond_prob will use laplace smoothing.
+    and assigns them log(cond_prob), otherwise, cond_prob will use count 0 in laplace smoothing prob.
     """
     label, cp_list, pp = train_list[0], train_list[1][0:-1], train_list[1][-1]
 
@@ -260,7 +260,7 @@ def predict(train_list):
     for words in range(len(cp_list)):
         if cp_list[words][0] in INPUT.value and cp_list[words][0] != 0:
             prob_list[words] = log(cp_list[words][1])
-        else: prob_list[words] = log(laplace_smoothing(0, ?????, v))
+        else: prob_list[words] = log(laplace_smoothing(0, ?????))
     log_prob_sum = fsum(prob_list.append(pp))
     return (label, log_prob_sum)
 
@@ -273,8 +273,27 @@ def argmax(doc_prob_list):
             pred = doc_prob_list[l][0]
     return pred
 
+def accurate_label_count(comparison_list):
+    """
+    This compares the prediction with the labels,
+    and returns 1 if the prediction is in the label.
+    """
+    label, pred = comparison_list
+    acc = 0
+    if pred in label: acc = 1
+    return ('acc', acc)
 
-##################################################
+def accuracy(rdd_label, rdd_pred):
+    """
+    This calculates the accuracy by using count of correct prediction
+    divided by the count of total amount of documents in inputting file.
+    """
+    rdd_accuracy = rdd_label.zip(rdd_pred)\
+                            .map(accurate_label_count)\
+                            .reduceByKey(add)\
+                            .map(lambda x: x[1] / rdd_pred.count())
+    return rdd_accuracy
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
@@ -343,7 +362,7 @@ if __name__ == "__main__":
     #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
 
     # Naive Bayes classifier
-    V = #number of distinct words in training set, sc.broadcast()
+    V = sc.broadcast() #number of distinct words in training set, sc.broadcast()
     # model training
     cp_rdd = sc.parallelize([])
     cp_rdd = cond_prob_rdd(cp_rdd, doc_spec_frequency_vectors)
@@ -361,7 +380,11 @@ if __name__ == "__main__":
     # model testing
     # 1, training accuracy
     INPUT = sc.broadcast(words_list(rdd_train_data))
-    train_pred_rdd = rdd.map(predict).map(argmax)
+    rdd_train_pred = rdd.map(predict).map(argmax)
+    rdd_train_acc = accuracy(rdd_train_label, rdd_train_pred)
+    print(rdd_train_acc)
     # 2, testing accuracy
     INPUT = sc.broadcast(words_list(rdd_test_data))
-    test_pred_rdd = rdd.map(predict).map(argmax)
+    rdd_test_pred = rdd.map(predict).map(argmax)
+    rdd_test_acc = accuracy(rdd_test_label, rdd_test_pred)
+    print(rdd_test_acc)
