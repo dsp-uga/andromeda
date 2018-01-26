@@ -101,14 +101,14 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
                                       # 	      [<docid(1)>, <label>, <count(0)>],
                                       # 	      [<docid(2)>, <label>, <count(0)>],...]
     
-    count_vector[doc_index][2] += 1
+      count_vector[doc_index][2] += 1
 
     # Build a list of (word, vector) tuples. I'm returning them all at
     # one time at the very end, but you could just as easily make use
     # of the "yield" keyword here instead to return them one-at-a-time.
-    out_tuples.append([w, count_vector]) #<- [<word> [[<docid(0)>, <label(0)>, <count>],
-                                      # 	      [<docid(1)>, <label(1)>, <count>],
-                                      # 	      [<docid(2)>, <label(0)>, <count>],...]]
+      out_tuples.append([w, count_vector]) #<- [<word> [[<docid(0)>, <label(0)>, <count>],
+                                      # 	        [<docid(1)>, <label(1)>, <count>],
+                                      # 	        [<docid(2)>, <label(0)>, <count>],...]]
   return out_tuples
 
 
@@ -153,9 +153,6 @@ def get_things_out(x):
     list_to_return.append([x[0],count_list[i]])
   return list_to_return
 
-def get_label_out(list_1,list_2):
-  return [list_1[0][0],[list_1[0][1:]]+[list_2[0][1:]]]
-
 def wordSpec2docSpec(wordSpec_rdd):
   summed_wordSpec_rdd = rdd.reduceByKey(combine_by_doc) 
   #should still be['word',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]]
@@ -167,29 +164,31 @@ def wordSpec2docSpec(wordSpec_rdd):
   #    ...]
   #pair word with each document count and flat everything out
 	
-  rdd_flat_release = rdd_flat.map(lambda x: (x[1][0],[[x[1][1],x[0],x[1][2]]]))
+  rdd_flat_release = rdd_flat.map(lambda x: (x[1][0],([x[1][1],[x[0],x[1][2]]])))
   #rdd[[<docid0>,[<label0>,<'word0'>,<count>]],...,[<docidN>,[<labelN>,<'word0'>,<count>]],
   #    [<docid0>,[<label0>,<'word1'>,<count>]],...,[<docidN>,[<labelN>,<'word1'>,<count>]],
   #    ...]
   #move everything into right place
 	
-  docid_rdd = rdd_flat_release.reduceByKey(get_label_out)
-  #rdd[[<docid0>,[<label0>,[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  docid_rdd = rdd_flat_release.map(lambda x: ((x[0],x[1][0]),x[1][1:]))
+  #rdd[((<docid0>,<label0>),[[<'word0'>,<count>]]),
+  #    ((<docid0>,<label0>),[[<'word1'>,<count>]]),
   #    ...
-  #    [<docidN>,[<label0>,[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+  #    ((<docidN>,<labelN>),[[<'word0'>,<count>]]),
+  #    ((<docidN>,<labelN>),[[<'word1'>,<count>]])]
   #extracting the label
 
-  docid_label_rdd = docid_rdd.map(lambda x: ((x[0],x[1][0]),x[1][1]))
+  docid_label_rdd = docid_rdd.reduceByKey(lambda x,y: x+y)
   #rdd[[(<docid0>,<label0>),[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
   #    ...
   #    [(<docidN>,<label0>),[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
   #move the label out
   #just in case we need this version of data structure
 
-  label_spec_rdd = docid_rdd.map(lambda x: (x[1][0],x[1][1]))
-  #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+  label_spec_rdd = docid_label_rdd.map(lambda x: (x[0][1],x[1]))
+  #rdd[(<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]),
   #    ...
-  #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+  #    (<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]])]
   #move the label out and delete the document id
   return label_spec_rdd, docid_label_rdd
 
@@ -364,9 +363,9 @@ if __name__ == "__main__":
 
   # training
   cp_rdd = sc.parallelize([])
-  cp_rdd = cond_prob_rdd(cp_rdd, rdd)
+  cp_rdd = cond_prob_rdd(cp_rdd, doc_spec_frequency_vectors)
   pp_rdd = sc.parallelize([])
-  pp_rdd = prior_prob_rdd(pp_rdd, rdd)
+  pp_rdd = prior_prob_rdd(pp_rdd, doc_spec_frequency_vectors)
   rdd = NBtraining(cp_rdd, pp_rdd)
 
 
