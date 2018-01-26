@@ -237,17 +237,23 @@ def NBtraining(cp_rdd, pp_rdd):
                 .map(lambda x: (x[0], [x[1][0], x[1][1]]))
     return rdd
 
-# Jenny, this is yours :P
-def words_list(textfile_rdd):
+# need debug
+def words_list(word_n_count_list):
     """
-    This transfers textfile rdds to a word list rdd that contains only words in each file.
+    This transfers list of word and its counts to a list that contains only words in each file.
     Each line of the rdd will be the word list of each document.
     """
+    length = len(word_n_count_list)
+    new_list = []
+
+    for i in range(length):
+        if not (word_n_count_list[i][1] == 0):
+            new_list.append(word_n_count_list[i][0])
+    
     # [["w_1", "w_2", "w_3", ......, "w_d1"],
     #  ["w_1", "w_2", "w_3", ......, "w_d2"], ...,
     #  ["w_1", "w_2", "w_3", ......, "w_dk"]]
-
-    return
+    return new_list
 
 def predict(train_list):
     """
@@ -359,10 +365,26 @@ if __name__ == "__main__":
     doc_spec_frequency_vectors, with_id = wordSpec2docSpec(word_specific_frequency_vectors)
     #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
     #    ...
-    #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+    #    [<labelN>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
 
+    #need debug
+    words_in_doc_rdd = with_id.map(lambda x: (x[0][0],words_list(x[1])))
+#     words_in_doc_rdd_nodocid = words_in_doc_rdd.map(lambda x: x[1])
+    #word list in each document
+    
+    #need debug
+    words_in_label_rdd = doc_spec_frequency_vectors.map(lambda x: (x[0],words_list(x[1])))
+    word_count_rdd = words_in_label_rdd.reduceByKey(lambda x,y: x+y)
+    word_count_each_label_rdd = word_count_rdd.map(lambda x: (x[0],len(set(x[1]))))
+    #word count in each label
+    
     # Naive Bayes classifier
-    V = sc.broadcast() #number of distinct words in training set, sc.broadcast()
+    #need debug
+    word_numb = word_specific_frequency_vectors.count()
+    #number of distinct words in training set
+    V = sc.broadcast(word_numb) 
+    #broadcast number of distinct words in training set
+    
     # model training
     cp_rdd = sc.parallelize([])
     cp_rdd = cond_prob_rdd(cp_rdd, doc_spec_frequency_vectors)
