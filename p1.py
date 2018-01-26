@@ -167,17 +167,18 @@ def wordSpec2docSpec(wordSpec_rdd):
 #   tfidf = np.array([tf * idf for tf in vector])
 #   return (word, tfidf)
 
-def laplace_smoothing(word_count_in_label, count_in_label, v):
+def laplace_smoothing(word_count_in_label, count_in_label):
     """
     This applys laplace smoothing to obtain the conditional probability of
     a word given specific label c. v is the total number of possible words in training set.
     """
+    v = V.value
     nominator = word_count_in_label + 1
     denominator = count_in_label + v + 1
     cond_prob = nominator / denominator
     return cond_prob
 
-def laplace_cond_prob(word_list, v):
+def laplace_cond_prob(word_list):
     """
     This counts the conditional probability of each word, given the specific label,
     the probabilities are applied laplace smoothing.
@@ -186,7 +187,7 @@ def laplace_cond_prob(word_list, v):
     for i in range(len(word_list)):
         total_count += word_list[i][1]
     for i in range(len(word_list)):
-        word_list[i] = (word_list[i][0], laplace_smoothing(word_list[i][1], total_count, v))
+        word_list[i] = (word_list[i][0], laplace_smoothing(word_list[i][1], total_count))
         # word_list[i] = (word_list[i][0], word_list[i][1] / total_count)
     return word_list
 
@@ -196,7 +197,6 @@ def cond_prob_rdd(cp_rdd, rdd):
     The conditional probabilities here have already been applied laplace smoothing.
     """
     labels = rdd.map(lambda x: x[0]).distinct().collect()
-    v = #number of distinct words in training set
 
     for ind in range(len(labels)):
         rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
@@ -204,7 +204,7 @@ def cond_prob_rdd(cp_rdd, rdd):
 
         list_same_label = rdd_same_label.flatMap(lambda x: tuple(x[1])).reduceByKey(add).collect()
         sum_count_in_label = rdd_label.map(lambda x: (x, list_same_label))
-        rdd_cond_prob = sum_count_in_label.map(lambda x: (x[0], laplace_cond_prob(x[1], v)))
+        rdd_cond_prob = sum_count_in_label.map(lambda x: (x[0], laplace_cond_prob(x[1])))
         cp_rdd = cp_rdd.union(rdd_cond_prob)
     return cp_rdd
 
@@ -343,7 +343,7 @@ if __name__ == "__main__":
     #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
 
     # Naive Bayes classifier
-    v = #number of distinct words in training set
+    V = #number of distinct words in training set, sc.broadcast()
     # model training
     cp_rdd = sc.parallelize([])
     cp_rdd = cond_prob_rdd(cp_rdd, doc_spec_frequency_vectors)
