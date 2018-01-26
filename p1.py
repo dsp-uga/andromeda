@@ -26,6 +26,12 @@ def book_to_terms(book):
     words = list(map(lambda word: word.strip().lower(), contents.split()))
     return words
 
+def tokenize_words(no_quot_words):
+    new = []
+    for item in no_quot_words;
+        new.extend(item.split(" "))
+    return new
+
 def remove_stopwords(word_count):
     """
     This simply tests whether the term in question is listed among the
@@ -73,8 +79,11 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     doc_index = document_list.index(docid)
 
     # Generate a list of words and do a bunch of processing.
-    words = book_to_terms(["junk", content])
-
+    #need debug
+    no_quot_words = content.split("&quot")
+    words = tokenize_words(no_quot_words)
+#     words = book_to_terms(["junk", content])
+    
     out_tuples = []
     N = len(document_list) # Denominator for TF-IDF.
     punctuation = PUNC.value
