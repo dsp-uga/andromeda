@@ -28,7 +28,7 @@ def book_to_terms(book):
 
 def tokenize_words(no_quot_words):
     new = []
-    for item in no_quot_words;
+    for item in no_quot_words:
         new.extend(item.split(" "))
     return new
 
@@ -75,29 +75,29 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     docid, content, label = doc_tuple
     # This is how we know what document we're in--i.e., what document
     # count to increment in the count array.
+    label_list = LABELS.value
     document_list = DOCS.value
     doc_index = document_list.index(docid)
 
     # Generate a list of words and do a bunch of processing.
-    #need debug
     no_quot_words = content.split("&quot")
     words = tokenize_words(no_quot_words)
-#     words = book_to_terms(["junk", content])
-    
+    # words = book_to_terms(["junk", content])
+
     out_tuples = []
     N = len(document_list) # Denominator for TF-IDF.
     punctuation = PUNC.value
     stopwords = SW.value
     for w in words:
-    # Enforce stopwords and minimum length.
+        # Enforce stopwords and minimum length.
         if w in stopwords or len(w) <= 1: continue
         w = check_punctuation(w)
         lancaster_stemmer = LancasterStemmer()
         w = lancaster_stemmer.stem(w)
         # Build the document-count vector.
-        count_vector = np.zeros(N)
+        count_vector = []
         for i in range(N):
-            count_vector[i] = [i, label, 0]
+            count_vector.append([i, label_list[i], 0])
         # initialize [[<docid(0)>, <label>, <count(0)>],
         #             [<docid(1)>, <label>, <count(0)>],
         #             [<docid(2)>, <label>, <count(0)>],...]
@@ -126,7 +126,7 @@ def get_things_out(x):
     return list_to_return
 
 def wordSpec2docSpec(wordSpec_rdd):
-    summed_wordSpec_rdd = rdd.reduceByKey(combine_by_doc)
+    summed_wordSpec_rdd = wordSpec_rdd.reduceByKey(combine_by_doc)
     #should still be['word',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]]
     #but no duplicate words
 
@@ -143,23 +143,24 @@ def wordSpec2docSpec(wordSpec_rdd):
     #move everything into right place
 
     docid_rdd = rdd_flat_release.map(lambda x: ((x[0],x[1][0]),x[1][1:]))
-    #rdd[((<docid0>,<label0>),[[<'word0'>,<count>]]),
-    #    ((<docid0>,<label0>),[[<'word1'>,<count>]]),
-    #    ...
-    #    ((<docidN>,<labelN>),[[<'word0'>,<count>]]),
-    #    ((<docidN>,<labelN>),[[<'word1'>,<count>]])]
-    #extracting the label
     docid_label_rdd = docid_rdd.reduceByKey(lambda x,y: x+y)
+#     docid_rdd = rdd_flat_release.reduceByKey(get_label_out)
+    #rdd[[<docid0>,[<label0>,[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+    #    ...
+    #    [<docidN>,[<label0>,[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+    #extracting the label
+#     docid_label_rdd = []
+#     docid_label_rdd = docid_rdd.map(lambda x: ((x[0],x[1][0]),x[1][1]))
     #rdd[[(<docid0>,<label0>),[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
     #    ...
     #    [(<docidN>,<label0>),[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
     #move the label out
     #just in case we need this version of data structure
-
     label_spec_rdd = docid_label_rdd.map(lambda x: (x[0][1],x[1]))
-    #rdd[(<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]),
+#     label_spec_rdd = docid_rdd.map(lambda x: (x[1][0],x[1][1]))
+    #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
     #    ...
-    #    (<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]])]
+    #    [<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
     #move the label out and delete the document id
     return label_spec_rdd, docid_label_rdd
 
@@ -184,7 +185,7 @@ def laplace_smoothing(word_count_in_label, count_in_label):
     v = V.value
     nominator = word_count_in_label + 1
     denominator = count_in_label + v
-    cond_prob = nominator / denominator
+    cond_prob = log(nominator / denominator)
     return cond_prob
 
 def laplace_cond_prob(word_list):
@@ -230,7 +231,7 @@ def prior_prob_rdd(pp_rdd, rdd):
         rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
 
         doc_num_same_label = rdd_same_label.count()
-        rdd_prior_prob = rdd_label.map(lambda x: (x, doc_num_same_label/doc_num))
+        rdd_prior_prob = rdd_label.map(lambda x: (x, log(doc_num_same_label/doc_num)))
         pp_rdd = pp_rdd.union(rdd_prior_prob)
     return pp_rdd
 
@@ -258,11 +259,15 @@ def words_list(word_n_count_list):
     for i in range(length):
         if not (word_n_count_list[i][1] == 0):
             new_list.append(word_n_count_list[i][0])
-    
+
     # [["w_1", "w_2", "w_3", ......, "w_d1"],
     #  ["w_1", "w_2", "w_3", ......, "w_d2"], ...,
     #  ["w_1", "w_2", "w_3", ......, "w_dk"]]
     return new_list
+
+
+
+
 
 def predict(train_list):
     """
@@ -354,7 +359,7 @@ if __name__ == "__main__":
                     .filter(lambda x: 'CAT' in x[1])
     # <content> <label_containing_'CAT'_separated>
 
-    valid_labels = rdd.map(lambda x: x[1]).collect(0)
+    valid_labels = valid_rdd.map(lambda x: x[1]).collect()
     LABELS = sc.broadcast(valid_labels)
     rdd_to_split = valid_rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1]))
     # <doc_id> <content> <label>
@@ -366,7 +371,7 @@ if __name__ == "__main__":
     doc_index = rdd_to_split.map(lambda x: x[0]).collect()
     DOCS = sc.broadcast(doc_index)
 
-    word_specific_frequency_vectors = rdd_to_split.map(doc2vec)	#->not sure map or flatMap
+    word_specific_frequency_vectors = rdd_to_split.flatMap(doc2vec)	#->not sure map or flatMap
     #Should look like
     #  rdd([['word0',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]],
     #       ['word1',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]],
@@ -376,24 +381,21 @@ if __name__ == "__main__":
     #    ...
     #    [<labelN>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
 
-    #need debug
+    #word list in each document (??)
     words_in_doc_rdd = with_id.map(lambda x: (x[0][0],words_list(x[1])))
 #     words_in_doc_rdd_nodocid = words_in_doc_rdd.map(lambda x: x[1])
-    #word list in each document
-    
-    #need debug
+
     words_in_label_rdd = doc_spec_frequency_vectors.map(lambda x: (x[0],words_list(x[1])))
     word_count_rdd = words_in_label_rdd.reduceByKey(lambda x,y: x+y)
-    word_count_each_label_rdd = word_count_rdd.map(lambda x: (x[0],len(set(x[1]))))
     #word count in each label
-    
+    word_count_each_label_rdd = word_count_rdd.map(lambda x: (x[0],len(set(x[1]))))
+
     # Naive Bayes classifier
-    #need debug
     word_numb = word_specific_frequency_vectors.count()
     #number of distinct words in training set
-    V = sc.broadcast(word_numb) 
+    V = sc.broadcast(word_numb)
     #broadcast number of distinct words in training set
-    
+
     # model training
     cp_rdd = sc.parallelize([])
     cp_rdd = cond_prob_rdd(cp_rdd, doc_spec_frequency_vectors)
