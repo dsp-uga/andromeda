@@ -9,7 +9,6 @@ from nltk.corpus import stopwords
 from nltk.stem.lancaster import LancasterStemmer
 from operator import add
 from math import log
-from math import fsum
 
 from pyspark import SparkContext
 # from pyspark.sql import SparkSession
@@ -247,7 +246,6 @@ def NBtraining(cp_rdd, pp_rdd):
                 .map(lambda x: (x[0], [x[1][0], x[1][1]]))
     return rdd
 
-# need debug
 def words_list(word_n_count_list):
     """
     This transfers list of word and its counts to a list that contains only words in each file.
@@ -265,54 +263,48 @@ def words_list(word_n_count_list):
     #  ["w_1", "w_2", "w_3", ......, "w_dk"]]
     return new_list
 
+####
+def validation_format(data_rdd_in_textfile):
+# a function that transfers inputting sc.textFile() into the format as
+# rdd([doc_1, [['w11', 1], ['w12', 1], ..... , ['w1d', 1]]],
+#     [doc_2, [['w21', 1], ['w22', 1], ..... , ['w2d', 1]]], ...)
+####
+    return
 
+def NBpredict(training_rdd, val_testing_rdd):
+    """
+    This provides a list of prediction of labels for each document in testing data.
+    """
+    add = ADD.value
+    doc_numb = testing_rdd.count()
+    prediction = []
 
+    for i in range(len(doc_numb)):
+        testing_doc = testing_rdd.map(lambda x: x[1] if (x[0]==i) else continue)
+        prob = []
+        for label in ADD:
+            training_label_cp = training_rdd.map(lambda x: x[1] if (x[0]==label[0]) else continue)
+            new.rdd = testing_doc.leftOuterJoin(training_label_cp)
+            cal.rdd = new.rdd.map(lambda x: x[1][0]*x[1][1] if (x[1][1] != None) else label[2])
+            log_p = sum(cal_rdd.collect()) + label[1]
+            prob.append(log_p)
+        max_index = np.argmax(prob)
+        prediction.append(ADD[max_index][0])
 
+    return prediction
 
-def predict(train_list):
+def cal_accuracy(label_list, pred_list):
     """
-    This determines the cond_prob of those words in both training and inputting sets
-    and assigns them log(cond_prob), otherwise, cond_prob will use count 0 in laplace smoothing prob.
+    This calculates the accuracy based on assigning 1 if the prediction of ith document
+    in testing data is in the labels of ith document in testing label, and averaging
+    the total counts.
     """
-    label, cp_list, pp = train_list[0], train_list[1][0:-1], train_list[1][-1]
+    cnt = 0
+    for doc in range(len(label)):
+        if prediction[doc] in label[doc]: cnt += 1
+    accuracy = cnt / len(label)
+    return accuracy
 
-    prob_list = []
-    for words in range(len(cp_list)):
-        if cp_list[words][0] in INPUT.value and cp_list[words][0] != 0:
-            prob_list[words] = log(cp_list[words][1])
-        else: prob_list[words] = log(laplace_smoothing(0, ?????))
-    log_prob_sum = fsum(prob_list.append(pp))
-    return (label, log_prob_sum)
-
-def argmax(doc_prob_list):
-    """
-    This returns the label with the largest probability value in the list.
-    """
-    for l in range(len(doc_prob_list)):
-        if doc_prob_list[l][1] == max(doc_prob_list[0:]):
-            pred = doc_prob_list[l][0]
-    return pred
-
-def accurate_label_count(comparison_list):
-    """
-    This compares the prediction with the labels,
-    and returns 1 if the prediction is in the label.
-    """
-    label, pred = comparison_list
-    acc = 0
-    if pred in label: acc = 1
-    return ('acc', acc)
-
-def accuracy(rdd_label, rdd_pred):
-    """
-    This calculates the accuracy by using count of correct prediction
-    divided by the count of total amount of documents in inputting file.
-    """
-    rdd_accuracy = rdd_label.zip(rdd_pred)\
-                            .map(accurate_label_count)\
-                            .reduceByKey(add)\
-                            .map(lambda x: x[1] / rdd_pred.count())
-    return rdd_accuracy
 
 
 if __name__ == "__main__":
@@ -401,7 +393,7 @@ if __name__ == "__main__":
     cp_rdd = cond_prob_rdd(cp_rdd, doc_spec_frequency_vectors)
     pp_rdd = sc.parallelize([])
     pp_rdd = prior_prob_rdd(pp_rdd, doc_spec_frequency_vectors)
-    rdd = NBtraining(cp_rdd, pp_rdd)
+    NB_training_rdd = NBtraining(cp_rdd, pp_rdd)
 
     # # input list
     # INPUT = sc.broadcast(words_list())
@@ -411,13 +403,18 @@ if __name__ == "__main__":
     # # ['label1', 'label2', 'label3', ..., 'labelk']
 
     # model testing
+    ADD = pp_rdd.leftOuterJoin(word_count_each_label_rdd)\
+                .map(lambda x: (x[0], x[1][0], laplace_smoothing(0, x[1][1])))
+    ADD = sc.broadcast(ADD.collect())
+    val_training_rdd = validation_format(rdd_train_data)
+    val_testing_rdd = validation_format(rdd_test_data)
+    # prediction
+    prediction_train = NBpredict(NB_training_rdd, val_training_rdd)
+    prediction_test = NBpredict(NB_training_rdd, val_testing_rdd)
+    # accuracy
     # 1, training accuracy
-    INPUT = sc.broadcast(words_list(rdd_train_data))
-    rdd_train_pred = rdd.map(predict).map(argmax)
-    rdd_train_acc = accuracy(rdd_train_label, rdd_train_pred)
-    print(rdd_train_acc)
+    training_acc = cal_accuracy(rdd_train_label, prediction_train)
+    print('Training Accuracy: %.2f %%' % (training_acc*100))
     # 2, testing accuracy
-    INPUT = sc.broadcast(words_list(rdd_test_data))
-    rdd_test_pred = rdd.map(predict).map(argmax)
-    rdd_test_acc = accuracy(rdd_test_label, rdd_test_pred)
-    print(rdd_test_acc)
+    testing_acc = cal_accuracy(rdd_test_label, prediction_test)
+    print('Testing Accuracy: %.2f %%' % (testing_acc*100))
