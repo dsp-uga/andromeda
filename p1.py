@@ -26,6 +26,9 @@ def book_to_terms(book):
     return words
 
 def tokenize_words(no_quot_words):
+    """
+    This tokenizes individual words
+    """
     new = []
     for item in no_quot_words:
         new.extend(item.split(" "))
@@ -66,6 +69,10 @@ def check_punctuation(word):
     return word
 
 def cleanup_word(word):
+    """
+    This completes all the preprocessing required.
+    Including removing punctuation and steming words
+    """
     w = check_punctuation(word)
     lancaster_stemmer = LancasterStemmer()
     w = lancaster_stemmer.stem(w)
@@ -99,7 +106,7 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
 #         w = check_punctuation(w)
 #         lancaster_stemmer = LancasterStemmer()
 #         w = lancaster_stemmer.stem(w)
-        w = cleanup_word(word)
+        w = cleanup_word(w)
         # Build the document-count vector.
         count_vector = []
         for i in range(N):
