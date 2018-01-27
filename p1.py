@@ -26,6 +26,9 @@ def book_to_terms(book):
     return words
 
 def tokenize_words(no_quot_words):
+    """
+    This tokenizes individual words
+    """
     new = []
     for item in no_quot_words:
         new.extend(item.split(" "))
@@ -65,6 +68,16 @@ def check_punctuation(word):
         word = remove_punctuation_from_end(word)
     return word
 
+def cleanup_word(word):
+    """
+    This completes all the preprocessing required.
+    Including removing punctuation and steming words
+    """
+    w = check_punctuation(word)
+    lancaster_stemmer = LancasterStemmer()
+    w = lancaster_stemmer.stem(w)
+    return w
+
 def doc2vec(doc_tuple): #<- <docid> <content> <label>
     """
     This takes the same document tuple that is the output of wholeTextFiles,
@@ -85,14 +98,15 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
 
     out_tuples = []
     N = len(document_list) # Denominator for TF-IDF.
-    punctuation = PUNC.value
+#     punctuation = PUNC.value
     stopwords = SW.value
     for w in words:
         # Enforce stopwords and minimum length.
         if w in stopwords or len(w) <= 1: continue
-        w = check_punctuation(w)
-        lancaster_stemmer = LancasterStemmer()
-        w = lancaster_stemmer.stem(w)
+#         w = check_punctuation(w)
+#         lancaster_stemmer = LancasterStemmer()
+#         w = lancaster_stemmer.stem(w)
+        w = cleanup_word(w)
         # Build the document-count vector.
         count_vector = []
         for i in range(N):
@@ -263,13 +277,26 @@ def words_list(word_n_count_list):
     #  ["w_1", "w_2", "w_3", ......, "w_dk"]]
     return new_list
 
+def docSpec_vec(content):
+    no_quot_words = content.split("&quot")
+    words = tokenize_words(no_quot_words)
+    stopwords = SW.value
+    test_word_list = []
+    for w in words:
+        if w in stopwords or len(w) <= 1: continue
+        w = cleanup_word(words)
+        test_word_list.append(w)
+    return test_word_list
+
 ####
 def validation_format(data_rdd_in_textfile):
 # a function that transfers inputting sc.textFile() into the format as
 # rdd([doc_1, [['w11', 1], ['w12', 1], ..... , ['w1d', 1]]],
 #     [doc_2, [['w21', 1], ['w22', 1], ..... , ['w2d', 1]]], ...)
 ####
-    return
+    docid_data_rdd = data_rdd_in_textfile.zipWithIndex()
+    tokenized_docid_data_rdd = docid_data_rdd.map(lambda x: (x[0],docSpec_vec(x[1])))
+    return tokenized_docid_data_rdd
 
 def NBpredict(training_rdd, val_testing_rdd):
     """
@@ -406,6 +433,7 @@ if __name__ == "__main__":
     ADD = pp_rdd.leftOuterJoin(word_count_each_label_rdd)\
                 .map(lambda x: (x[0], x[1][0], laplace_smoothing(0, x[1][1])))
     ADD = sc.broadcast(ADD.collect())
+    #     ???
     val_training_rdd = validation_format(rdd_train_data)
     val_testing_rdd = validation_format(rdd_test_data)
     # prediction
