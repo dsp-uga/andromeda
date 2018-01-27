@@ -282,14 +282,14 @@ def NBpredict(training_rdd, val_testing_rdd):
     for i in range(len(doc_numb)):
         testing_doc = testing_rdd.map(lambda x: x[1] if (x[0]==i) else continue)
         prob = []
-        for label in ADD:
+        for label in add:
             training_label_cp = training_rdd.map(lambda x: x[1] if (x[0]==label[0]) else continue)
             new.rdd = testing_doc.leftOuterJoin(training_label_cp)
             cal.rdd = new.rdd.map(lambda x: x[1][0]*x[1][1] if (x[1][1] != None) else label[2])
             log_p = sum(cal_rdd.collect()) + label[1]
             prob.append(log_p)
         max_index = np.argmax(prob)
-        prediction.append(ADD[max_index][0])
+        prediction.append(add[max_index][0])
 
     return prediction
 
