@@ -102,11 +102,11 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     stopwords = SW.value
     for w in words:
         # Enforce stopwords and minimum length.
+        w = cleanup_word(w)
         if w in stopwords or len(w) <= 1: continue
 #         w = check_punctuation(w)
 #         lancaster_stemmer = LancasterStemmer()
 #         w = lancaster_stemmer.stem(w)
-        w = cleanup_word(w)
         # Build the document-count vector.
         count_vector = []
         for i in range(N):
