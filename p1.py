@@ -433,8 +433,8 @@ if __name__ == "__main__":
     ADD = pp_rdd.leftOuterJoin(word_count_each_label_rdd)\
                 .map(lambda x: (x[0], x[1][0], laplace_smoothing(0, x[1][1])))
     ADD = sc.broadcast(ADD.collect())
-#     val_training_rdd = validation_format(rdd_train_data)
-#     ???
+    #     ???
+    val_training_rdd = validation_format(rdd_train_data)
     val_testing_rdd = validation_format(rdd_test_data)
     # prediction
     prediction_train = NBpredict(NB_training_rdd, val_training_rdd)
