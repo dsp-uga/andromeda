@@ -283,38 +283,49 @@ def docSpec_vec(content):
     stopwords = SW.value
     test_word_list = []
     for w in words:
+        w = cleanup_word(w)
         if w in stopwords or len(w) <= 1: continue
-        w = cleanup_word(words)
-        test_word_list.append(w)
+        test_word_list.append([w,1])
     return test_word_list
 
-####
 def validation_format(data_rdd_in_textfile):
 # a function that transfers inputting sc.textFile() into the format as
 # rdd([doc_1, [['w11', 1], ['w12', 1], ..... , ['w1d', 1]]],
 #     [doc_2, [['w21', 1], ['w22', 1], ..... , ['w2d', 1]]], ...)
-####
     docid_data_rdd = data_rdd_in_textfile.zipWithIndex()
-    tokenized_docid_data_rdd = docid_data_rdd.map(lambda x: (x[0],docSpec_vec(x[1])))
+    tokenized_docid_data_rdd = docid_data_rdd.map(lambda x: (x[1],docSpec_vec(x[0])))
     return tokenized_docid_data_rdd
+    # return docid_data_rdd
+
+def calculate(values,label):
+    if (values[1][1] != None):
+        return values[1][0]*values[1][1]
+    else:
+        return label[2]
 
 def NBpredict(training_rdd, val_testing_rdd):
     """
     This provides a list of prediction of labels for each document in testing data.
     """
     add = ADD.value
-    doc_numb = testing_rdd.count()
+    doc_numb = val_testing_rdd.count()
     prediction = []
 
-    for i in range(len(doc_numb)):
-        testing_doc = testing_rdd.map(lambda x: x[1] if (x[0]==i) else continue)
+    for i in range(doc_numb):
+        # testing_doc = testing_rdd.map(lambda x: x[1] if (x[0]==i) else continue) <<
+        test_doc = val_testing_rdd.filter(lambda x: x[0]==i)
+        testing_doc = test_doc.map(lambda x:x[1]).flatMap(lambda x: x[:])
         prob = []
         for label in add:
-            training_label_cp = training_rdd.map(lambda x: x[1] if (x[0]==label[0]) else continue)
-            new.rdd = testing_doc.leftOuterJoin(training_label_cp)
-            cal.rdd = new.rdd.map(lambda x: x[1][0]*x[1][1] if (x[1][1] != None) else label[2])
+            # training_label_cp = training_rdd.map(lambda x: x[1] if (x[0]==label[0]) else continue) <<
+            train_label = training_rdd.filter(lambda x: x[0]==label[0])
+            training_label_cp = train_label.map(lambda x: x[1][0]).flatMap(lambda x: x[:])
+            new_rdd = testing_doc.leftOuterJoin(training_label_cp)
+            cal_rdd = new_rdd.map(lambda x: calculate(x,label))
+
             log_p = sum(cal_rdd.collect()) + label[1]
             prob.append(log_p)
+
         max_index = np.argmax(prob)
         prediction.append(add[max_index][0])
 
@@ -327,9 +338,10 @@ def cal_accuracy(label_list, pred_list):
     the total counts.
     """
     cnt = 0
-    for doc in range(len(label)):
-        if prediction[doc] in label[doc]: cnt += 1
-    accuracy = cnt / len(label)
+    ttl = len(label_list)
+    for doc in range(ttl):
+        if pred_list[doc] in label_list[doc]: cnt += 1
+    accuracy = cnt / ttl
     return accuracy
 
 
@@ -422,27 +434,22 @@ if __name__ == "__main__":
     pp_rdd = prior_prob_rdd(pp_rdd, doc_spec_frequency_vectors)
     NB_training_rdd = NBtraining(cp_rdd, pp_rdd)
 
-    # # input list
-    # INPUT = sc.broadcast(words_list())
-    # # prediction
-    # prediction = rdd.map(predict).map(argmax)
-    # # a list of predicted labels for input file
-    # # ['label1', 'label2', 'label3', ..., 'labelk']
-
     # model testing
     ADD = pp_rdd.leftOuterJoin(word_count_each_label_rdd)\
                 .map(lambda x: (x[0], x[1][0], laplace_smoothing(0, x[1][1])))
     ADD = sc.broadcast(ADD.collect())
-    #     ???
     val_training_rdd = validation_format(rdd_train_data)
     val_testing_rdd = validation_format(rdd_test_data)
     # prediction
     prediction_train = NBpredict(NB_training_rdd, val_training_rdd)
     prediction_test = NBpredict(NB_training_rdd, val_testing_rdd)
+    print('Training Prediction:', prediction_train)
+    print('Testing Prediction:', prediction_test)
     # accuracy
     # 1, training accuracy
-    training_acc = cal_accuracy(rdd_train_label, prediction_train)
+    label_train = rdd_train_label.collect()
+    training_acc = cal_accuracy(label_train, prediction_train)
     print('Training Accuracy: %.2f %%' % (training_acc*100))
     # 2, testing accuracy
-    testing_acc = cal_accuracy(rdd_test_label, prediction_test)
-    print('Testing Accuracy: %.2f %%' % (testing_acc*100))
+    # testing_acc = cal_accuracy(rdd_test_label, prediction_test)
+    # print('Testing Accuracy: %.2f %%' % (testing_acc*100))
