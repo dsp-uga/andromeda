@@ -458,3 +458,4 @@ if __name__ == "__main__":
     textList = '\n'.join(prediction_test)
     outF.writelines(textList)
     outF.close()
+    
