@@ -11,7 +11,6 @@ from operator import add
 from math import log
 
 from pyspark import SparkContext
-# from pyspark.sql import SparkSession
 
 
 def book_to_terms(book):
@@ -453,3 +452,9 @@ if __name__ == "__main__":
     # 2, testing accuracy
     # testing_acc = cal_accuracy(rdd_test_label, prediction_test)
     # print('Testing Accuracy: %.2f %%' % (testing_acc*100))
+
+    # Output files
+    outF = open("pred_test.json", "w")
+    textList = '\n'.join(prediction_test)
+    outF.writelines(textList)
+    outF.close()
