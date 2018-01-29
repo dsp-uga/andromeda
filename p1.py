@@ -381,10 +381,11 @@ if __name__ == "__main__":
     PUNC = sc.broadcast(string.punctuation)
 
     # Generate RDDs of tuples
-    rdd_train_data = sc.textFile(training_data)
-    rdd_train_label = sc.textFile(training_label)
-    rdd_test_data = sc.textFile(testing_data)
-    rdd = rdd_train_data.zip(rdd_train_label)
+    rdd_train_data = sc.textFile(training_data).zipWithIndex().map(lambda x: (x[1],x[0]))
+    rdd_train_label = sc.textFile(training_label).zipWithIndex().map(lambda x: (x[1],x[0]))
+    rdd_test_data = sc.textFile(testing_data).zipWithIndex().map(lambda x: (x[1],x[0]))
+#     rdd = rdd_train_data.zip(rdd_train_label)
+    rdd = rdd_train_data.join(rdd_train_label).map(lambda x: x[1])
     # <content> <label_list>
 
     # Preprocessing
