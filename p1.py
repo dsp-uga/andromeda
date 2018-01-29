@@ -91,12 +91,12 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     and parses out all the words for a single document, AND builds the
     document-specific count vectors for each word.
     """
-    docid, content, label = doc_tuple
+    content, label = doc_tuple
     # This is how we know what document we're in--i.e., what document
     # count to increment in the count array.
-    label_list = LABELS.value
-    document_list = DOCS.value
-    doc_index = document_list.index(docid)
+#     label_list = LABELS.value
+#     document_list = DOCS.value
+#     doc_index = document_list.index(docid)
 
     # Generate a list of words and do a bunch of processing.
     no_quot_words = content.replace("--", " ").split("&quot")
@@ -111,26 +111,26 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
         # Enforce stopwords and minimum length.
         w = cleanup_word(w)
         if w in stopwords or len(w) <= 1: continue
-#         w = check_punctuation(w)
-#         lancaster_stemmer = LancasterStemmer()
-#         w = lancaster_stemmer.stem(w)
-        # Build the document-count vector.
-        count_vector = []
-        for i in range(N):
-            count_vector.append([i, label_list[i], 0])
-        # initialize [[<docid(0)>, <label>, <count(0)>],
-        #             [<docid(1)>, <label>, <count(0)>],
-        #             [<docid(2)>, <label>, <count(0)>],...]
-        count_vector[doc_index][2] += 1
+# #         w = check_punctuation(w)
+# #         lancaster_stemmer = LancasterStemmer()
+# #         w = lancaster_stemmer.stem(w)
+#         # Build the document-count vector.
+#         count_vector = []
+#         for i in range(N):
+#             count_vector.append([i, label_list[i], 0])
+#         # initialize [[<docid(0)>, <label>, <count(0)>],
+#         #             [<docid(1)>, <label>, <count(0)>],
+#         #             [<docid(2)>, <label>, <count(0)>],...]
+#         count_vector[doc_index][2] += 1
 
-    # Build a list of (word, vector) tuples. I'm returning them all at
-    # one time at the very end, but you could just as easily make use
-    # of the "yield" keyword here instead to return them one-at-a-time.
-        out_tuples.append([w, count_vector])
+#     # Build a list of (word, vector) tuples. I'm returning them all at
+#     # one time at the very end, but you could just as easily make use
+#     # of the "yield" keyword here instead to return them one-at-a-time.
+        out_tuples.append(w)
     # [<word> [[<docid(0)>, <label(0)>, <count>],
     #          [<docid(1)>, <label(1)>, <count>],
     #          [<docid(2)>, <label(0)>, <count>],...]]
-    return out_tuples
+    return (label, out_tuples)
 
 def combine_by_doc(list_1,list_2):
     new_list = []
