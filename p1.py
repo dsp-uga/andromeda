@@ -395,81 +395,98 @@ if __name__ == "__main__":
     rdd_test_data = sc.textFile(testing_data).zipWithIndex().map(lambda x: (x[1],x[0]))
 #     rdd = rdd_train_data.zip(rdd_train_label)
     rdd = rdd_train_data.join(rdd_train_label).map(lambda x: x[1])
-    # <content> <label_list>
-
-    # Preprocessing
+    
+    # Preprocessing to labels, leaving only ones with 'CAT'
     rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
+    rdd = rdd.flatMapValues(lambda x: x).filter(lambda x: 'CAT' in x[1])
+#    print(rdd.take(2))
+    doc_numb_in_label_rdd = rdd.map(lambda x: (x[1],1)).reduceByKey(lambda x,y: x+y)
+    doc_numb_in_label = doc_numb_in_label_rdd.collect()
 
-    valid_rdd = rdd.flatMapValues(lambda x: x)\
-                    .filter(lambda x: 'CAT' in x[1])
-    # <content> <label_containing_'CAT'_separated>
+    # Precessing to content of each document
+#    rdd_train_data = rdd.map(lambda x: x[0]).zipWithIndex()
 
-    valid_labels = valid_rdd.map(lambda x: x[1]).collect()
-    LABELS = sc.broadcast(valid_labels)
-    rdd_to_split = valid_rdd.zipWithIndex().map(lambda x: (x[1], x[0][0], x[0][1]))
-    # <doc_id> <content> <label>
+#    DOCS = sc.broadcast(rdd_train_data.map(lambda x:x[1]).collect())
+    #
+    # Assuming we have n docs
+    rdd = rdd.map(doc2vec)
+    rdd = rdd.groupByKey().map(lambda x : (x[0], list(x[1])))
+#    print(rdd.take(1))
+    counts = []
+    total_doc_numb = 0
+    total_count_in_each_label = []
+    for i in doc_numb_in_label:
+        total_doc_numb += i[1]
+        label = i[0]
+        rdd_label = rdd.filter(lambda x: x[0] == label).flatMap(lambda x: x[1]).flatMap(lambda x: x)
+        rdd_label_count = rdd_label.map(lambda x: (x,1)).reduceByKey(lambda x,y: x+y)
+        rdd_label_count = rdd_label_count.filter(lambda x: x[1]>1)
+        counts.append(rdd_label_count)
+        total_word_count = sum(rdd_label_count.map(lambda x: x[1]).collect())
+        l = []
+        l.append(label)
+        l.append(total_word_count)
+        total_count_in_each_label.append(l)
 
-    #   doc_numb = rdd.count()
-    #   DOCS = sc.broadcast(range(doc_numb))
-    #   frequency_vectors = rdd.map(doc2vec)
+    total_count_in_each_label_rdd = sc.parallelize(total_count_in_each_label)
 
-    doc_index = rdd_to_split.map(lambda x: x[0]).collect()
-    DOCS = sc.broadcast(doc_index)
+    words_in_training = rdd.flatMap(lambda x: x[1]).flatMap(lambda x: x).distinct().map(lambda x: (x,0))
+    V = sc.broadcast(words_in_training.count())
 
-    word_specific_frequency_vectors = rdd_to_split.flatMap(doc2vec)	#->not sure map or flatMap
-    #Should look like
-    #  rdd([['word0',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]],
-    #       ['word1',[[<docid0>,<label0>,<count>],...,[<docidN>,<labelN>,<count>]]],
-    #                                                                       ...])
-    doc_spec_frequency_vectors, with_id = wordSpec2docSpec(word_specific_frequency_vectors)
-    #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
-    #    ...
-    #    [<labelN>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
+    cps = []
+    for rdd in counts:
+        cps.append(cond_prob_rdd(rdd))
+    
+    
+#     doc_spec_frequency_vectors, with_id = wordSpec2docSpec(word_specific_frequency_vectors)
+#     #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
+#     #    ...
+#     #    [<labelN>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
 
-    #word list in each document (??)
-    words_in_doc_rdd = with_id.map(lambda x: (x[0][0],words_list(x[1])))
-#     words_in_doc_rdd_nodocid = words_in_doc_rdd.map(lambda x: x[1])
+#     #word list in each document (??)
+#     words_in_doc_rdd = with_id.map(lambda x: (x[0][0],words_list(x[1])))
+# #     words_in_doc_rdd_nodocid = words_in_doc_rdd.map(lambda x: x[1])
 
-    words_in_label_rdd = doc_spec_frequency_vectors.map(lambda x: (x[0],words_list(x[1])))
-    word_count_rdd = words_in_label_rdd.reduceByKey(lambda x,y: x+y)
-    #word count in each label
-    word_count_each_label_rdd = word_count_rdd.map(lambda x: (x[0],len(set(x[1]))))
+#     words_in_label_rdd = doc_spec_frequency_vectors.map(lambda x: (x[0],words_list(x[1])))
+#     word_count_rdd = words_in_label_rdd.reduceByKey(lambda x,y: x+y)
+#     #word count in each label
+#     word_count_each_label_rdd = word_count_rdd.map(lambda x: (x[0],len(set(x[1]))))
 
-    # Naive Bayes classifier
-    word_numb = word_specific_frequency_vectors.count()
-    #number of distinct words in training set
-    V = sc.broadcast(word_numb)
-    #broadcast number of distinct words in training set
+#     # Naive Bayes classifier
+#     word_numb = word_specific_frequency_vectors.count()
+#     #number of distinct words in training set
+#     V = sc.broadcast(word_numb)
+#     #broadcast number of distinct words in training set
 
-    # model training
-    cp_rdd = sc.parallelize([])
-    cp_rdd = cond_prob_rdd(cp_rdd, doc_spec_frequency_vectors)
-    pp_rdd = sc.parallelize([])
-    pp_rdd = prior_prob_rdd(pp_rdd, doc_spec_frequency_vectors)
-    NB_training_rdd = NBtraining(cp_rdd, pp_rdd)
+#     # model training
+#     cp_rdd = sc.parallelize([])
+#     cp_rdd = cond_prob_rdd(cp_rdd, doc_spec_frequency_vectors)
+#     pp_rdd = sc.parallelize([])
+#     pp_rdd = prior_prob_rdd(pp_rdd, doc_spec_frequency_vectors)
+#     NB_training_rdd = NBtraining(cp_rdd, pp_rdd)
 
-    # model testing
-    ADD = pp_rdd.leftOuterJoin(word_count_each_label_rdd)\
-                .map(lambda x: (x[0], x[1][0], laplace_smoothing(0, x[1][1])))
-    ADD = sc.broadcast(ADD.collect())
-    val_training_rdd = validation_format(rdd_train_data)
-    val_testing_rdd = validation_format(rdd_test_data)
-    # prediction
-    prediction_train = NBpredict(NB_training_rdd, val_training_rdd)
-    prediction_test = NBpredict(NB_training_rdd, val_testing_rdd)
-    print('Training Prediction:', prediction_train)
-    print('Testing Prediction:', prediction_test)
-    # accuracy
-    # 1, training accuracy
-    label_train = rdd_train_label.collect()
-    training_acc = cal_accuracy(label_train, prediction_train)
-    print('Training Accuracy: %.2f %%' % (training_acc*100))
-    # 2, testing accuracy
-    # testing_acc = cal_accuracy(rdd_test_label, prediction_test)
-    # print('Testing Accuracy: %.2f %%' % (testing_acc*100))
+#     # model testing
+#     ADD = pp_rdd.leftOuterJoin(word_count_each_label_rdd)\
+#                 .map(lambda x: (x[0], x[1][0], laplace_smoothing(0, x[1][1])))
+#     ADD = sc.broadcast(ADD.collect())
+#     val_training_rdd = validation_format(rdd_train_data)
+#     val_testing_rdd = validation_format(rdd_test_data)
+#     # prediction
+#     prediction_train = NBpredict(NB_training_rdd, val_training_rdd)
+#     prediction_test = NBpredict(NB_training_rdd, val_testing_rdd)
+#     print('Training Prediction:', prediction_train)
+#     print('Testing Prediction:', prediction_test)
+#     # accuracy
+#     # 1, training accuracy
+#     label_train = rdd_train_label.collect()
+#     training_acc = cal_accuracy(label_train, prediction_train)
+#     print('Training Accuracy: %.2f %%' % (training_acc*100))
+#     # 2, testing accuracy
+#     # testing_acc = cal_accuracy(rdd_test_label, prediction_test)
+#     # print('Testing Accuracy: %.2f %%' % (testing_acc*100))
 
-    # Output files
-    outF = open("pred_test.json", "w")
-    textList = '\n'.join(prediction_test)
-    outF.writelines(textList)
-    outF.close()
+#     # Output files
+#     outF = open("pred_test.json", "w")
+#     textList = '\n'.join(prediction_test)
+#     outF.writelines(textList)
+#     outF.close()
