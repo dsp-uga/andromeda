@@ -72,9 +72,14 @@ def cleanup_word(word):
     This completes all the preprocessing required.
     Including removing punctuation and steming words
     """
-    w = check_punctuation(word)
-    lancaster_stemmer = LancasterStemmer()
-    w = lancaster_stemmer.stem(w)
+    w = ''.join([i for i in word if not i.isdigit()])
+    w = check_punctuation(w)
+    # lancaster_stemmer = LancasterStemmer()
+    # w = lancaster_stemmer.stem(w)
+    ps = PorterStemmer()
+    wnl = WordNetLemmatizer()
+    w = ps.stem(wnl.lemmatize(w.lower()))
+    w = check_punctuation(w)
     return w
 
 def doc2vec(doc_tuple): #<- <docid> <content> <label>
@@ -91,7 +96,7 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     doc_index = document_list.index(docid)
 
     # Generate a list of words and do a bunch of processing.
-    no_quot_words = content.split("&quot")
+    no_quot_words = content.replace("--", " ").split("&quot")
     words = tokenize_words(no_quot_words)
     # words = book_to_terms(["junk", content])
 
@@ -458,4 +463,3 @@ if __name__ == "__main__":
     textList = '\n'.join(prediction_test)
     outF.writelines(textList)
     outF.close()
-    
