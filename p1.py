@@ -197,53 +197,53 @@ def wordSpec2docSpec(wordSpec_rdd):
 #   tfidf = np.array([tf * idf for tf in vector])
 #   return (word, tfidf)
 
-def laplace_smoothing(word_count_in_label, count_in_label):
-    """
-    This applys laplace smoothing to obtain the conditional probability of
-    a word given specific label c. v is the total number of possible words in training set.
-    """
-    v = V.value
-    nominator = word_count_in_label + 1
-    denominator = count_in_label + v
-    cond_prob = log(nominator / denominator)
-    return cond_prob
-
-def laplace_cond_prob(word_list):
-    """
-    This counts the conditional probability of each word, given the specific label,
-    the probabilities are applied laplace smoothing.
-    """
-    total_count = 0
-    for i in range(len(word_list)):
-        total_count += word_list[i][1]
-    for i in range(len(word_list)):
-        word_list[i] = (word_list[i][0], laplace_smoothing(word_list[i][1], total_count))
-        # word_list[i] = (word_list[i][0], word_list[i][1] / total_count)
-    return word_list
-
-# def cond_prob_rdd(rdd):
+# def laplace_smoothing(word_count_in_label, count_in_label):
+#     """
+#     This applys laplace smoothing to obtain the conditional probability of
+#     a word given specific label c. v is the total number of possible words in training set.
+#     """
 #     v = V.value
-#     total_counts = sum(rdd.map(lambda x: x[1]).collect())
-#     cond_prob_rdd = rdd.map(lambda x: (x[0], log((x[1]+1)/(total_counts+v))))
-#     return cond_prob_rdd
+#     nominator = word_count_in_label + 1
+#     denominator = count_in_label + v
+#     cond_prob = log(nominator / denominator)
+#     return cond_prob
+#
+# def laplace_cond_prob(word_list):
+#     """
+#     This counts the conditional probability of each word, given the specific label,
+#     the probabilities are applied laplace smoothing.
+#     """
+#     total_count = 0
+#     for i in range(len(word_list)):
+#         total_count += word_list[i][1]
+#     for i in range(len(word_list)):
+#         word_list[i] = (word_list[i][0], laplace_smoothing(word_list[i][1], total_count))
+#         # word_list[i] = (word_list[i][0], word_list[i][1] / total_count)
+#     return word_list
 
-def cond_prob_rdd(cp_rdd, rdd):
-    """
-    This changes former rdd with word counts into rdd with word conditional probabilities.
-    The conditional probabilities here have already been applied laplace smoothing.
-    """
-    labels = rdd.map(lambda x: x[0]).distinct().collect()
+def cond_prob_rdd(rdd):
+    v = V.value
+    total_counts = sum(rdd.map(lambda x: x[1]).collect())
+    cond_prob_rdd = rdd.map(lambda x: (x[0], log((x[1]+1)/(total_counts+v))))
+    return cond_prob_rdd
 
-    for ind in range(len(labels)):
-        rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
-        rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
-
-        list_same_label = rdd_same_label.flatMap(lambda x: tuple(x[1])).reduceByKey(add).collect()
-        sum_count_in_label = rdd_label.map(lambda x: (x, list_same_label))
-        rdd_cond_prob = sum_count_in_label.map(lambda x: (x[0], laplace_cond_prob(x[1])))
-        cp_rdd = cp_rdd.union(rdd_cond_prob)
-    return cp_rdd
-
+# def cond_prob_rdd(cp_rdd, rdd):
+#     """
+#     This changes former rdd with word counts into rdd with word conditional probabilities.
+#     The conditional probabilities here have already been applied laplace smoothing.
+#     """
+#     labels = rdd.map(lambda x: x[0]).distinct().collect()
+#
+#     for ind in range(len(labels)):
+#         rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
+#         rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
+#
+#         list_same_label = rdd_same_label.flatMap(lambda x: tuple(x[1])).reduceByKey(add).collect()
+#         sum_count_in_label = rdd_label.map(lambda x: (x, list_same_label))
+#         rdd_cond_prob = sum_count_in_label.map(lambda x: (x[0], laplace_cond_prob(x[1])))
+#         cp_rdd = cp_rdd.union(rdd_cond_prob)
+#     return cp_rdd
+#
 def prior_prob_rdd(pp_rdd, rdd):
     """
     This changes former rdd grouped by document ids
@@ -273,22 +273,22 @@ def NBtraining(cp_rdd, pp_rdd):
                 .map(lambda x: (x[0], [x[1][0], x[1][1]]))
     return rdd
 
-def words_list(word_n_count_list):
-    """
-    This transfers list of word and its counts to a list that contains only words in each file.
-    Each line of the rdd will be the word list of each document.
-    """
-    length = len(word_n_count_list)
-    new_list = []
-
-    for i in range(length):
-        if not (word_n_count_list[i][1] == 0):
-            new_list.append(word_n_count_list[i][0])
-
-    # [["w_1", "w_2", "w_3", ......, "w_d1"],
-    #  ["w_1", "w_2", "w_3", ......, "w_d2"], ...,
-    #  ["w_1", "w_2", "w_3", ......, "w_dk"]]
-    return new_list
+# def words_list(word_n_count_list):
+#     """
+#     This transfers list of word and its counts to a list that contains only words in each file.
+#     Each line of the rdd will be the word list of each document.
+#     """
+#     length = len(word_n_count_list)
+#     new_list = []
+#
+#     for i in range(length):
+#         if not (word_n_count_list[i][1] == 0):
+#             new_list.append(word_n_count_list[i][0])
+#
+#     # [["w_1", "w_2", "w_3", ......, "w_d1"],
+#     #  ["w_1", "w_2", "w_3", ......, "w_d2"], ...,
+#     #  ["w_1", "w_2", "w_3", ......, "w_dk"]]
+#     return new_list
 
 def docSpec_vec(content):
     no_quot_words = content.split("&quot")
