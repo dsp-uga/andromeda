@@ -7,6 +7,8 @@ import nltk
 # nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.stem.lancaster import LancasterStemmer
+from nltk.stem.porter import PorterStemmer
+from nltk.stem.wordnet import WordNetLemmatizer
 from operator import add
 from math import log
 
@@ -217,6 +219,12 @@ def laplace_cond_prob(word_list):
         word_list[i] = (word_list[i][0], laplace_smoothing(word_list[i][1], total_count))
         # word_list[i] = (word_list[i][0], word_list[i][1] / total_count)
     return word_list
+
+# def cond_prob_rdd(rdd):
+#     v = V.value
+#     total_counts = sum(rdd.map(lambda x: x[1]).collect())
+#     cond_prob_rdd = rdd.map(lambda x: (x[0], log((x[1]+1)/(total_counts+v))))
+#     return cond_prob_rdd
 
 def cond_prob_rdd(cp_rdd, rdd):
     """
