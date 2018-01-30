@@ -90,18 +90,14 @@ def doc2vec(doc_tuple): #<- <label> <content>
     This takes the same document tuple that is the output of wholeTextFiles,
     and parses out all the words for a single document, AND builds the
     document-specific count vectors for each word.
-
     input: doc_tuple
            <content>
-
     output: <word>, [c1,c2,c3,...,c_n]
     """
     content, label = doc_tuple
     # This is how we know what document we're in--i.e., what document
     # count to increment in the count array.
-#     label_list = LABELS.value
-#     document_list = DOCS.value
-#     doc_index = document_list.index(docid)
+
 
     # Generate a list of words and do a bunch of processing.
     no_quot_words = content.replace("--", " ").split("&quot")
@@ -109,24 +105,12 @@ def doc2vec(doc_tuple): #<- <label> <content>
     # words = book_to_terms(["junk", content])
 
     out_tuples = []
-#    N = len(document_list) # Denominator for TF-IDF.
-#     punctuation = PUNC.value
     stopwords = SW.value
     for w in words:
         # Enforce stopwords and minimum length.
         w = cleanup_word(w)
         if w in stopwords or len(w) <= 1: continue
-# #         w = check_punctuation(w)
-# #         lancaster_stemmer = LancasterStemmer()
-# #         w = lancaster_stemmer.stem(w)
-#         # Build the document-count vector.
-#         count_vector = []
-#         for i in range(N):
-#             count_vector.append([i, label_list[i], 0])
-#         # initialize [[<docid(0)>, <label>, <count(0)>],
-#         #             [<docid(1)>, <label>, <count(0)>],
-#         #             [<docid(2)>, <label>, <count(0)>],...]
-#         count_vector[doc_index][2] += 1
+
 
 #     # Build a list of (word, vector) tuples. I'm returning them all at
 #     # one time at the very end, but you could just as easily make use
@@ -189,42 +173,6 @@ def wordSpec2docSpec(wordSpec_rdd):
     #move the label out and delete the document id
     return label_spec_rdd, docid_label_rdd
 
-# def counts_to_tfidf(word_vector):
-#   """
-#   Computes the TF-IDF scores for each term-vector pair.
-#   """
-#   word, vector = word_vector
-#   N = vector.shape[0]
-#   nt = vector[vector > 0].shape[0] # Number of documents in which word appears.
-
-#   # Compute IDF and TF-IDF.
-#   idf = np.log(N / nt)
-#   tfidf = np.array([tf * idf for tf in vector])
-#   return (word, tfidf)
-
-# def laplace_smoothing(word_count_in_label, count_in_label):
-#     """
-#     This applys laplace smoothing to obtain the conditional probability of
-#     a word given specific label c. v is the total number of possible words in training set.
-#     """
-#     v = V.value
-#     nominator = word_count_in_label + 1
-#     denominator = count_in_label + v
-#     cond_prob = log(nominator / denominator)
-#     return cond_prob
-#
-# def laplace_cond_prob(word_list):
-#     """
-#     This counts the conditional probability of each word, given the specific label,
-#     the probabilities are applied laplace smoothing.
-#     """
-#     total_count = 0
-#     for i in range(len(word_list)):
-#         total_count += word_list[i][1]
-#     for i in range(len(word_list)):
-#         word_list[i] = (word_list[i][0], laplace_smoothing(word_list[i][1], total_count))
-#         # word_list[i] = (word_list[i][0], word_list[i][1] / total_count)
-#     return word_list
 
 def cond_prob_rdd(rdd):
     v = V.value
@@ -232,68 +180,6 @@ def cond_prob_rdd(rdd):
     cond_prob_rdd = rdd.map(lambda x: (x[0], log((x[1]+1)/(total_counts+v))))
     return cond_prob_rdd
 
-# def cond_prob_rdd(cp_rdd, rdd):
-#     """
-#     This changes former rdd with word counts into rdd with word conditional probabilities.
-#     The conditional probabilities here have already been applied laplace smoothing.
-#     """
-#     labels = rdd.map(lambda x: x[0]).distinct().collect()
-#
-#     for ind in range(len(labels)):
-#         rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
-#         rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
-#
-#         list_same_label = rdd_same_label.flatMap(lambda x: tuple(x[1])).reduceByKey(add).collect()
-#         sum_count_in_label = rdd_label.map(lambda x: (x, list_same_label))
-#         rdd_cond_prob = sum_count_in_label.map(lambda x: (x[0], laplace_cond_prob(x[1])))
-#         cp_rdd = cp_rdd.union(rdd_cond_prob)
-#     return cp_rdd
-#
-# def prior_prob_rdd(pp_rdd, rdd):
-#     """
-#     This changes former rdd grouped by document ids
-#     into rdd grouped by different labels.
-#     """
-#     doc_num = rdd.count()
-#     labels = rdd.map(lambda x: x[0]).distinct().collect()
-#
-#     for ind in range(len(labels)):
-#         rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
-#         rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
-#
-#         doc_num_same_label = rdd_same_label.count()
-#         rdd_prior_prob = rdd_label.map(lambda x: (x, log(doc_num_same_label/doc_num)))
-#         pp_rdd = pp_rdd.union(rdd_prior_prob)
-#     return pp_rdd
-
-# in rdd
-# def NBtraining(cp_rdd, pp_rdd):
-#     """
-#     This returns a huge rdd combined by cp_rdd and pp_rdd,
-#     and transforms each probability value.
-#     """
-#     # input: <label>, [(w1, cp1), (w2, cp2), ..., (wd,cpd)], pp
-#     # output: <label>, [(w1, cp1), (w2, cp2), ..., (wd,cpd), pp]
-#     rdd = cp_rdd.leftOuterJoin(pp_rdd)\
-#                 .map(lambda x: (x[0], [x[1][0], x[1][1]]))
-#     return rdd
-
-# def words_list(word_n_count_list):
-#     """
-#     This transfers list of word and its counts to a list that contains only words in each file.
-#     Each line of the rdd will be the word list of each document.
-#     """
-#     length = len(word_n_count_list)
-#     new_list = []
-#
-#     for i in range(length):
-#         if not (word_n_count_list[i][1] == 0):
-#             new_list.append(word_n_count_list[i][0])
-#
-#     # [["w_1", "w_2", "w_3", ......, "w_d1"],
-#     #  ["w_1", "w_2", "w_3", ......, "w_d2"], ...,
-#     #  ["w_1", "w_2", "w_3", ......, "w_dk"]]
-#     return new_list
 
 def docSpec_vec(content):
     no_quot_words = content.replace("--", " ").split("&quot")
@@ -415,10 +301,7 @@ if __name__ == "__main__":
 
 
     # Precessing to content of each document
-#    rdd_train_data = rdd.map(lambda x: x[0]).zipWithIndex()
 
-#    DOCS = sc.broadcast(rdd_train_data.map(lambda x:x[1]).collect())
-    #
     # Assuming we have n docs
     rdd = rdd.map(doc2vec)
     rdd = rdd.groupByKey().map(lambda x : (x[0], list(x[1])))
@@ -501,56 +384,3 @@ if __name__ == "__main__":
     outF.writelines(textList)
     outF.close()
 
-
-#     doc_spec_frequency_vectors, with_id = wordSpec2docSpec(word_specific_frequency_vectors)
-#     #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
-#     #    ...
-#     #    [<labelN>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]]
-
-#     #word list in each document (??)
-#     words_in_doc_rdd = with_id.map(lambda x: (x[0][0],words_list(x[1])))
-# #     words_in_doc_rdd_nodocid = words_in_doc_rdd.map(lambda x: x[1])
-
-#     words_in_label_rdd = doc_spec_frequency_vectors.map(lambda x: (x[0],words_list(x[1])))
-#     word_count_rdd = words_in_label_rdd.reduceByKey(lambda x,y: x+y)
-#     #word count in each label
-#     word_count_each_label_rdd = word_count_rdd.map(lambda x: (x[0],len(set(x[1]))))
-
-#     # Naive Bayes classifier
-#     word_numb = word_specific_frequency_vectors.count()
-#     #number of distinct words in training set
-#     V = sc.broadcast(word_numb)
-#     #broadcast number of distinct words in training set
-
-#     # model training
-#     cp_rdd = sc.parallelize([])
-#     cp_rdd = cond_prob_rdd(cp_rdd, doc_spec_frequency_vectors)
-#     pp_rdd = sc.parallelize([])
-#     pp_rdd = prior_prob_rdd(pp_rdd, doc_spec_frequency_vectors)
-#     NB_training_rdd = NBtraining(cp_rdd, pp_rdd)
-
-#     # model testing
-#     ADD = pp_rdd.leftOuterJoin(word_count_each_label_rdd)\
-#                 .map(lambda x: (x[0], x[1][0], laplace_smoothing(0, x[1][1])))
-#     ADD = sc.broadcast(ADD.collect())
-#     val_training_rdd = validation_format(rdd_train_data)
-#     val_testing_rdd = validation_format(rdd_test_data)
-#     # prediction
-#     prediction_train = NBpredict(NB_training_rdd, val_training_rdd)
-#     prediction_test = NBpredict(NB_training_rdd, val_testing_rdd)
-#     print('Training Prediction:', prediction_train)
-#     print('Testing Prediction:', prediction_test)
-#     # accuracy
-#     # 1, training accuracy
-#     label_train = rdd_train_label.collect()
-#     training_acc = cal_accuracy(label_train, prediction_train)
-#     print('Training Accuracy: %.2f %%' % (training_acc*100))
-#     # 2, testing accuracy
-#     # testing_acc = cal_accuracy(rdd_test_label, prediction_test)
-#     # print('Testing Accuracy: %.2f %%' % (testing_acc*100))
-
-#     # Output files
-#     outF = open("pred_test.json", "w")
-#     textList = '\n'.join(prediction_test)
-#     outF.writelines(textList)
-#     outF.close()
