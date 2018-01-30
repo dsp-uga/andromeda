@@ -24,6 +24,7 @@ These instructions will get you a copy of the project up and running on your loc
 - Python
 - GCP or a Awesome Computer at home
 - Hadhoop
+- nltk
 
 ### Installing
 
