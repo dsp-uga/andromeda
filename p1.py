@@ -443,7 +443,7 @@ if __name__ == "__main__":
     words_in_training = rdd.flatMap(lambda x: x[1]).flatMap(lambda x: x)\
                             .distinct().map(lambda x: (x,0))
     V = sc.broadcast(words_in_training.count())
-    
+
     counts_full = []
     for rdd_item in counts:
         new_rdd = rdd_item.union(words_in_training).reduceByKey(lambda x,y: x+y)
@@ -468,9 +468,9 @@ if __name__ == "__main__":
     # Prediction
     val_training_rdd = validation_format(rdd_train_data)
     val_testing_rdd = validation_format(rdd_test_data)
-    prediction_train = NBpredict(NB_training_rdd, val_training_rdd)
+    prediction_train = NBpredict(cp_rdd_list, val_training_rdd)
     print('Training Prediction:', prediction_train)
-    prediction_test = NBpredict(NB_training_rdd, val_testing_rdd)
+    prediction_test = NBpredict(cp_rdd_list, val_testing_rdd)
     print('Testing Prediction:', prediction_test)
 
     # Accuracy
