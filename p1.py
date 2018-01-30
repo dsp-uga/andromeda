@@ -85,18 +85,23 @@ def cleanup_word(word):
     w = check_punctuation(w)
     return w
 
-def doc2vec(doc_tuple): #<- <docid> <content> <label>
+def doc2vec(doc_tuple): #<- <label> <content>
     """
     This takes the same document tuple that is the output of wholeTextFiles,
     and parses out all the words for a single document, AND builds the
     document-specific count vectors for each word.
+
+    input: doc_tuple
+           <content>
+
+    output: <word>, [c1,c2,c3,...,c_n]
     """
-    docid, content, label = doc_tuple
+    content, label = doc_tuple
     # This is how we know what document we're in--i.e., what document
     # count to increment in the count array.
-    label_list = LABELS.value
-    document_list = DOCS.value
-    doc_index = document_list.index(docid)
+#    document_list = DOCS.value
+#    doc_index = document_list.index(docid)
+#    doc_index = docid
 
     # Generate a list of words and do a bunch of processing.
     no_quot_words = content.replace("--", " ").split("&quot")
@@ -104,33 +109,71 @@ def doc2vec(doc_tuple): #<- <docid> <content> <label>
     # words = book_to_terms(["junk", content])
 
     out_tuples = []
-    N = len(document_list) # Denominator for TF-IDF.
+#    N = len(document_list) # Denominator for TF-IDF.
 #     punctuation = PUNC.value
     stopwords = SW.value
     for w in words:
         # Enforce stopwords and minimum length.
         w = cleanup_word(w)
         if w in stopwords or len(w) <= 1: continue
-#         w = check_punctuation(w)
-#         lancaster_stemmer = LancasterStemmer()
-#         w = lancaster_stemmer.stem(w)
-        # Build the document-count vector.
-        count_vector = []
-        for i in range(N):
-            count_vector.append([i, label_list[i], 0])
-        # initialize [[<docid(0)>, <label>, <count(0)>],
-        #             [<docid(1)>, <label>, <count(0)>],
-        #             [<docid(2)>, <label>, <count(0)>],...]
-        count_vector[doc_index][2] += 1
+
+#        count_vector = np.zeros(N, dtype = np.int)
+#        count_vector[doc_index] += 1
 
     # Build a list of (word, vector) tuples. I'm returning them all at
     # one time at the very end, but you could just as easily make use
     # of the "yield" keyword here instead to return them one-at-a-time.
-        out_tuples.append([w, count_vector])
-    # [<word> [[<docid(0)>, <label(0)>, <count>],
-    #          [<docid(1)>, <label(1)>, <count>],
-    #          [<docid(2)>, <label(0)>, <count>],...]]
-    return out_tuples
+#        out_tuples.append([w, count_vector])
+        out_tuples.append(w)
+    return (label, out_tuples)
+
+
+# def doc2vec(doc_tuple): #<- <docid> <content> <label>
+#     """
+#     This takes the same document tuple that is the output of wholeTextFiles,
+#     and parses out all the words for a single document, AND builds the
+#     document-specific count vectors for each word.
+#     """
+#     docid, content, label = doc_tuple
+#     # This is how we know what document we're in--i.e., what document
+#     # count to increment in the count array.
+#     # label_list = LABELS.value
+#     # document_list = DOCS.value
+#     # doc_index = document_list.index(docid)
+#
+#     # Generate a list of words and do a bunch of processing.
+#     no_quot_words = content.replace("--", " ").split("&quot")
+#     words = tokenize_words(no_quot_words)
+#     # words = book_to_terms(["junk", content])
+#
+#     out_tuples = []
+#     N = len(document_list) # Denominator for TF-IDF.
+# #     punctuation = PUNC.value
+#     stopwords = SW.value
+#     for w in words:
+#         # Enforce stopwords and minimum length.
+#         w = cleanup_word(w)
+#         if w in stopwords or len(w) <= 1: continue
+# #         w = check_punctuation(w)
+# #         lancaster_stemmer = LancasterStemmer()
+# #         w = lancaster_stemmer.stem(w)
+#         # Build the document-count vector.
+#         count_vector = []
+#         for i in range(N):
+#             count_vector.append([i, label_list[i], 0])
+#         # initialize [[<docid(0)>, <label>, <count(0)>],
+#         #             [<docid(1)>, <label>, <count(0)>],
+#         #             [<docid(2)>, <label>, <count(0)>],...]
+#         count_vector[doc_index][2] += 1
+#
+#     # Build a list of (word, vector) tuples. I'm returning them all at
+#     # one time at the very end, but you could just as easily make use
+#     # of the "yield" keyword here instead to return them one-at-a-time.
+#         out_tuples.append([w, count_vector])
+#     # [<word> [[<docid(0)>, <label(0)>, <count>],
+#     #          [<docid(1)>, <label(1)>, <count>],
+#     #          [<docid(2)>, <label(0)>, <count>],...]]
+#     return out_tuples
 
 def combine_by_doc(list_1,list_2):
     new_list = []
@@ -244,34 +287,34 @@ def cond_prob_rdd(rdd):
 #         cp_rdd = cp_rdd.union(rdd_cond_prob)
 #     return cp_rdd
 #
-def prior_prob_rdd(pp_rdd, rdd):
-    """
-    This changes former rdd grouped by document ids
-    into rdd grouped by different labels.
-    """
-    doc_num = rdd.count()
-    labels = rdd.map(lambda x: x[0]).distinct().collect()
-
-    for ind in range(len(labels)):
-        rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
-        rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
-
-        doc_num_same_label = rdd_same_label.count()
-        rdd_prior_prob = rdd_label.map(lambda x: (x, log(doc_num_same_label/doc_num)))
-        pp_rdd = pp_rdd.union(rdd_prior_prob)
-    return pp_rdd
+# def prior_prob_rdd(pp_rdd, rdd):
+#     """
+#     This changes former rdd grouped by document ids
+#     into rdd grouped by different labels.
+#     """
+#     doc_num = rdd.count()
+#     labels = rdd.map(lambda x: x[0]).distinct().collect()
+#
+#     for ind in range(len(labels)):
+#         rdd_same_label = rdd.filter(lambda x: x[0]==labels[ind])
+#         rdd_label = rdd_same_label.map(lambda x: x[0]).distinct()
+#
+#         doc_num_same_label = rdd_same_label.count()
+#         rdd_prior_prob = rdd_label.map(lambda x: (x, log(doc_num_same_label/doc_num)))
+#         pp_rdd = pp_rdd.union(rdd_prior_prob)
+#     return pp_rdd
 
 # in rdd
-def NBtraining(cp_rdd, pp_rdd):
-    """
-    This returns a huge rdd combined by cp_rdd and pp_rdd,
-    and transforms each probability value.
-    """
-    # input: <label>, [(w1, cp1), (w2, cp2), ..., (wd,cpd)], pp
-    # output: <label>, [(w1, cp1), (w2, cp2), ..., (wd,cpd), pp]
-    rdd = cp_rdd.leftOuterJoin(pp_rdd)\
-                .map(lambda x: (x[0], [x[1][0], x[1][1]]))
-    return rdd
+# def NBtraining(cp_rdd, pp_rdd):
+#     """
+#     This returns a huge rdd combined by cp_rdd and pp_rdd,
+#     and transforms each probability value.
+#     """
+#     # input: <label>, [(w1, cp1), (w2, cp2), ..., (wd,cpd)], pp
+#     # output: <label>, [(w1, cp1), (w2, cp2), ..., (wd,cpd), pp]
+#     rdd = cp_rdd.leftOuterJoin(pp_rdd)\
+#                 .map(lambda x: (x[0], [x[1][0], x[1][1]]))
+#     return rdd
 
 # def words_list(word_n_count_list):
 #     """
@@ -310,13 +353,13 @@ def validation_format(data_rdd_in_textfile):
     return tokenized_docid_data_rdd
     # return docid_data_rdd
 
-def calculate(values,label):
+def calculate(values, label):
     if (values[1][1] != None):
-        return values[1][0]*values[1][1]
+        return values[1][0] * values[1][1] #>>> depends on how you set validation format
     else:
         return label[2]
 
-def NBpredict(training_rdd, val_testing_rdd):
+def NBpredict(cp_rdd_list, val_testing_rdd):
     """
     This provides a list of prediction of labels for each document in testing data.
     """
@@ -330,11 +373,13 @@ def NBpredict(training_rdd, val_testing_rdd):
         testing_doc = test_doc.map(lambda x:x[1]).flatMap(lambda x: x[:])
         prob = []
         for label in add:
-            # training_label_cp = training_rdd.map(lambda x: x[1] if (x[0]==label[0]) else continue) <<
-            train_label = training_rdd.filter(lambda x: x[0]==label[0])
-            training_label_cp = train_label.map(lambda x: x[1][0]).flatMap(lambda x: x[:])
-            new_rdd = testing_doc.leftOuterJoin(training_label_cp)
-            cal_rdd = new_rdd.map(lambda x: calculate(x,label))
+            training_cp = cp_rdd_list[add.index(label)]
+            new_rdd = testing_doc.leftOuterJoin(training_cp)
+            cal_rdd = new_rdd.map(lambda x: calculate(x, label))
+            # train_label = training_rdd.filter(lambda x: x[0]==label[0])
+            # training_label_cp = train_label.map(lambda x: x[1][0]).flatMap(lambda x: x[:])
+            # new_rdd = testing_doc.leftOuterJoin(training_label_cp)
+            # cal_rdd = new_rdd.map(lambda x: calculate(x,label))
 
             log_p = sum(cal_rdd.collect()) + label[1]
             prob.append(log_p)
@@ -395,13 +440,15 @@ if __name__ == "__main__":
     rdd_test_data = sc.textFile(testing_data).zipWithIndex().map(lambda x: (x[1],x[0]))
 #     rdd = rdd_train_data.zip(rdd_train_label)
     rdd = rdd_train_data.join(rdd_train_label).map(lambda x: x[1])
-    
+
+    # Preprocessing --------------------------------------------------
     # Preprocessing to labels, leaving only ones with 'CAT'
     rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
     rdd = rdd.flatMapValues(lambda x: x).filter(lambda x: 'CAT' in x[1])
-#    print(rdd.take(2))
+    # Document Numbers for each label
     doc_numb_in_label_rdd = rdd.map(lambda x: (x[1],1)).reduceByKey(lambda x,y: x+y)
     doc_numb_in_label = doc_numb_in_label_rdd.collect()
+
 
     # Precessing to content of each document
 #    rdd_train_data = rdd.map(lambda x: x[0]).zipWithIndex()
@@ -411,7 +458,7 @@ if __name__ == "__main__":
     # Assuming we have n docs
     rdd = rdd.map(doc2vec)
     rdd = rdd.groupByKey().map(lambda x : (x[0], list(x[1])))
-#    print(rdd.take(1))
+
     counts = []
     total_doc_numb = 0
     total_count_in_each_label = []
@@ -428,16 +475,56 @@ if __name__ == "__main__":
         l.append(total_word_count)
         total_count_in_each_label.append(l)
 
+    # Total Counts for each label
     total_count_in_each_label_rdd = sc.parallelize(total_count_in_each_label)
-
-    words_in_training = rdd.flatMap(lambda x: x[1]).flatMap(lambda x: x).distinct().map(lambda x: (x,0))
+    # Distinct Words List in training data
+    words_in_training = rdd.flatMap(lambda x: x[1]).flatMap(lambda x: x)\
+                            .distinct().map(lambda x: (x,0))
     V = sc.broadcast(words_in_training.count())
 
-    cps = []
+
+    # Naive Bayes Classifier ----------------------------------------
+
+    # Conditional Probabilities, P(word|label)
+    # (after laplace smoothing and log transformation)
+    cp_rdd_list = []
     for rdd in counts:
-        cps.append(cond_prob_rdd(rdd))
-    
-    
+        cp_rdd_list.append(cond_prob_rdd(rdd))
+    # Prior Probability + Conditional Probability with count 0
+    # (after laplace smoothing and log transformation)
+    v = V.value
+    pp_rdd = doc_numb_in_label_rdd.map(lambda x: [x[0], log(x[1]/total_doc_numb)])
+    cp0_rdd = total_count_in_each_label_rdd.map(lambda x: [x[0], log(1/x[1]+v)])
+    ADD = pp_rdd.leftOuterJoin(cp0_rdd)\
+                .map(lambda x: [x[0], x[1][0], x[1][1]])
+    ADD = sc.broadcast(ADD.collect())
+
+    # Prediction
+    val_training_rdd = validation_format(rdd_train_data)
+    val_testing_rdd = validation_format(rdd_test_data)
+    prediction_train = NBpredict(NB_training_rdd, val_training_rdd)
+    print('Training Prediction:', prediction_train)
+    prediction_test = NBpredict(NB_training_rdd, val_testing_rdd)
+    print('Testing Prediction:', prediction_test)
+
+    # Accuracy
+    # 1, training accuracy
+    label_train = rdd_train_label.collect()
+    training_acc = cal_accuracy(label_train, prediction_train)
+    print('Training Accuracy: %.2f %%' % (training_acc*100))
+    # 2, testing accuracy
+    rdd_test_label = sc.textFile('~/csci8360/p1/data/y_test_vsmall.txt')
+    label_test = rdd_test_label.collect()
+    testing_acc = cal_accuracy(rdd_test_label, prediction_test)
+    print('Testing Accuracy: %.2f %%' % (testing_acc*100))
+
+    # Output Files
+    outF = open("pred_test.json", "w")
+    textList = '\n'.join(prediction_test)
+    outF.writelines(textList)
+    outF.close()
+
+
 #     doc_spec_frequency_vectors, with_id = wordSpec2docSpec(word_specific_frequency_vectors)
 #     #rdd[[<label0>,[[<'word0'>,<count>],[<'word1'>,<count>],...,[<'wordN'>,<count>]]],
 #     #    ...
