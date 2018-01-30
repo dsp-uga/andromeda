@@ -310,8 +310,9 @@ def validation_format(data_rdd_in_textfile):
 # a function that transfers inputting sc.textFile() into the format as
 # rdd([doc_1, [['w11', 1], ['w12', 1], ..... , ['w1d', 1]]],
 #     [doc_2, [['w21', 1], ['w22', 1], ..... , ['w2d', 1]]], ...)
-    docid_data_rdd = data_rdd_in_textfile.zipWithIndex()
-    tokenized_docid_data_rdd = docid_data_rdd.map(lambda x: (x[1],docSpec_vec(x[0])))
+    tokenized_docid_data_rdd = data_rdd_in_textfile.map(lambda x: (x[0], docSpec_vec(x[1])))
+    # docid_data_rdd = data_rdd_in_textfile.zipWithIndex()
+    # tokenized_docid_data_rdd = docid_data_rdd.map(lambda x: (x[1],docSpec_vec(x[0])))
     return tokenized_docid_data_rdd
     # return docid_data_rdd
 
@@ -408,7 +409,8 @@ if __name__ == "__main__":
     rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
     rdd = rdd.flatMapValues(lambda x: x).filter(lambda x: 'CAT' in x[1])
     # Document Numbers for each label
-    doc_numb_in_label_rdd = rdd.map(lambda x: (x[1],1)).reduceByKey(lambda x,y: x+y)
+    doc_numb_in_label_rdd = rdd.map(lambda x: (x[1],1))\
+                                .reduceByKey(lambda x,y: x+y).sortByKey(ascending=True)
     doc_numb_in_label = doc_numb_in_label_rdd.collect()
 
 
@@ -462,7 +464,8 @@ if __name__ == "__main__":
     pp_rdd = doc_numb_in_label_rdd.map(lambda x: [x[0], log(x[1]/total_doc_numb)])
     cp0_rdd = total_count_in_each_label_rdd.map(lambda x: [x[0], log(1/x[1]+v)])
     ADD = pp_rdd.leftOuterJoin(cp0_rdd)\
-                .map(lambda x: [x[0], x[1][0], x[1][1]])
+                .map(lambda x: [x[0], x[1][0], x[1][1]])\
+                .sortBy(lambda x: x[0], ascending=True)
     ADD = sc.broadcast(ADD.collect())
 
     # Prediction
@@ -470,21 +473,29 @@ if __name__ == "__main__":
     val_testing_rdd = validation_format(rdd_test_data)
     prediction_train = NBpredict(cp_rdd_list, val_training_rdd)
     print('Training Prediction:', prediction_train)
+    print('**** training_prediction *********************************')
     prediction_test = NBpredict(cp_rdd_list, val_testing_rdd)
     print('Testing Prediction:', prediction_test)
+    print('**** testing_prediction **********************************')
 
     # Accuracy
     # 1, training accuracy
-    label_train = rdd_train_label.collect()
+    label_train = sc.textFile(training_label).collect()
     training_acc = cal_accuracy(label_train, prediction_train)
     print('Training Accuracy: %.2f %%' % (training_acc*100))
+    print('**** training_accuracy *********************************')
     # 2, testing accuracy
-    rdd_test_label = sc.textFile('~/csci8360/p1/data/y_test_vsmall.txt')
+    rdd_test_label = sc.textFile('csci8360/p1/data/y_test_vsmall.txt')
     label_test = rdd_test_label.collect()
-    testing_acc = cal_accuracy(rdd_test_label, prediction_test)
+    testing_acc = cal_accuracy(label_test, prediction_test)
     print('Testing Accuracy: %.2f %%' % (testing_acc*100))
+    print('**** testing_prediction ********************************')
 
     # Output Files
+    outF = open("pred_train.json", "w")
+    textList = '\n'.join(prediction_train)
+    outF.writelines(textList)
+    outF.close()
     outF = open("pred_test.json", "w")
     textList = '\n'.join(prediction_test)
     outF.writelines(textList)
