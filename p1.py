@@ -296,7 +296,7 @@ def cond_prob_rdd(rdd):
 #     return new_list
 
 def docSpec_vec(content):
-    no_quot_words = content.split("&quot")
+    no_quot_words = content.replace("--", " ").split("&quot")
     words = tokenize_words(no_quot_words)
     stopwords = SW.value
     test_word_list = []
@@ -443,14 +443,18 @@ if __name__ == "__main__":
     words_in_training = rdd.flatMap(lambda x: x[1]).flatMap(lambda x: x)\
                             .distinct().map(lambda x: (x,0))
     V = sc.broadcast(words_in_training.count())
-
+    
+    counts_full = []
+    for rdd_item in counts:
+        new_rdd = rdd_item.union(words_in_training).reduceByKey(lambda x,y: x+y)
+        counts_full.append(new_rdd)
 
     # Naive Bayes Classifier ----------------------------------------
 
     # Conditional Probabilities, P(word|label)
     # (after laplace smoothing and log transformation)
     cp_rdd_list = []
-    for rdd in counts:
+    for rdd in counts_full:
         cp_rdd_list.append(cond_prob_rdd(rdd))
     # Prior Probability + Conditional Probability with count 0
     # (after laplace smoothing and log transformation)
