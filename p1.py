@@ -99,9 +99,9 @@ def doc2vec(doc_tuple): #<- <label> <content>
     content, label = doc_tuple
     # This is how we know what document we're in--i.e., what document
     # count to increment in the count array.
-#    document_list = DOCS.value
-#    doc_index = document_list.index(docid)
-#    doc_index = docid
+#     label_list = LABELS.value
+#     document_list = DOCS.value
+#     doc_index = document_list.index(docid)
 
     # Generate a list of words and do a bunch of processing.
     no_quot_words = content.replace("--", " ").split("&quot")
@@ -116,44 +116,6 @@ def doc2vec(doc_tuple): #<- <label> <content>
         # Enforce stopwords and minimum length.
         w = cleanup_word(w)
         if w in stopwords or len(w) <= 1: continue
-
-#        count_vector = np.zeros(N, dtype = np.int)
-#        count_vector[doc_index] += 1
-
-    # Build a list of (word, vector) tuples. I'm returning them all at
-    # one time at the very end, but you could just as easily make use
-    # of the "yield" keyword here instead to return them one-at-a-time.
-#        out_tuples.append([w, count_vector])
-        out_tuples.append(w)
-    return (label, out_tuples)
-
-
-# def doc2vec(doc_tuple): #<- <docid> <content> <label>
-#     """
-#     This takes the same document tuple that is the output of wholeTextFiles,
-#     and parses out all the words for a single document, AND builds the
-#     document-specific count vectors for each word.
-#     """
-#     docid, content, label = doc_tuple
-#     # This is how we know what document we're in--i.e., what document
-#     # count to increment in the count array.
-#     # label_list = LABELS.value
-#     # document_list = DOCS.value
-#     # doc_index = document_list.index(docid)
-#
-#     # Generate a list of words and do a bunch of processing.
-#     no_quot_words = content.replace("--", " ").split("&quot")
-#     words = tokenize_words(no_quot_words)
-#     # words = book_to_terms(["junk", content])
-#
-#     out_tuples = []
-#     N = len(document_list) # Denominator for TF-IDF.
-# #     punctuation = PUNC.value
-#     stopwords = SW.value
-#     for w in words:
-#         # Enforce stopwords and minimum length.
-#         w = cleanup_word(w)
-#         if w in stopwords or len(w) <= 1: continue
 # #         w = check_punctuation(w)
 # #         lancaster_stemmer = LancasterStemmer()
 # #         w = lancaster_stemmer.stem(w)
@@ -165,15 +127,15 @@ def doc2vec(doc_tuple): #<- <label> <content>
 #         #             [<docid(1)>, <label>, <count(0)>],
 #         #             [<docid(2)>, <label>, <count(0)>],...]
 #         count_vector[doc_index][2] += 1
-#
+
 #     # Build a list of (word, vector) tuples. I'm returning them all at
 #     # one time at the very end, but you could just as easily make use
 #     # of the "yield" keyword here instead to return them one-at-a-time.
-#         out_tuples.append([w, count_vector])
-#     # [<word> [[<docid(0)>, <label(0)>, <count>],
-#     #          [<docid(1)>, <label(1)>, <count>],
-#     #          [<docid(2)>, <label(0)>, <count>],...]]
-#     return out_tuples
+        out_tuples.append(w)
+    # [<word> [[<docid(0)>, <label(0)>, <count>],
+    #          [<docid(1)>, <label(1)>, <count>],
+    #          [<docid(2)>, <label(0)>, <count>],...]]
+    return (label, out_tuples)
 
 def combine_by_doc(list_1,list_2):
     new_list = []
