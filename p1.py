@@ -4,12 +4,10 @@ import os.path
 import numpy as np
 import string
 import nltk
-# nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.stem.lancaster import LancasterStemmer
 from nltk.stem.porter import PorterStemmer
 from nltk.stem.wordnet import WordNetLemmatizer
-# nltk.download('wordnet')
 from operator import add
 from math import log
 
@@ -18,6 +16,8 @@ from pyspark import SparkContext
 def tokenize_words(no_quot_words):
     """
     This tokenizes individual words
+    Firstly, to get rid of "&quot" by splitting the whole content with "&quot"
+    Secondly, it splits the remaining contents with " "
     """
     no_quot_words = no_quot_words.split("&quot") #.replace("--", " ")
     new = []
@@ -38,7 +38,7 @@ def remove_punctuation_from_end(word):
 
 def check_punctuation(word):
     """
-    This detects the punctuation if the words start with or end with punctuation,
+    This detects the punctuation if the words start or end with punctuation,
     and removes it by remove_punctuation_from _end if so.
     """
     punctuation = PUNC.value
@@ -50,11 +50,13 @@ def cleanup_word(word):
     """
     This completes all the preprocessing required.
     Including removing punctuation and steming words
+    Tried lancaster stemmer, porter stemmer and lemmatizer,
+    Lemmatizer works best
     """
     w = check_punctuation(word)
     # lancaster_stemmer = LancasterStemmer()
     # w = lancaster_stemmer.stem(w)
-    ps = PorterStemmer()
+    # ps = PorterStemmer()
     wnl = WordNetLemmatizer()
     w = wnl.lemmatize(w.lower())
     # w = ps.stem(wnl.lemmatize(w.lower()))
@@ -62,12 +64,34 @@ def cleanup_word(word):
     return w
 
 def cond_prob(word_count, ttl_count):
+    """
+    Compute conditional probability for each word
+    
+    Parameter
+    -----------------------
+    word_count: count of this word in this label -> INT
+    ttl_count: total word count in this label -> INT
+    
+    Return
+    -----------------------
+    RDD([(doc_id, word),...])
+    """
     v = V.value
     cond_prob = log((word_count+1) / (ttl_count+v))
     return cond_prob
 
 def validation_format(rdd_file_in_textfile):
-    # (doc_id, word)
+    """
+    Formatting the test file content
+    
+    Parameter
+    -----------------------
+    rdd_file_in_textfile -> RDD([(docid,content),...])
+    
+    Return
+    -----------------------
+    rdd_docid_word -> RDD([(doc_id, word),...])
+    """
     word_tokenize_rdd = rdd_file_in_textfile.map(lambda x: (x[0], tokenize_words(x[1])))
     words_rdd = word_tokenize_rdd.flatMapValues(lambda x: x).map(lambda x: (x[0], x[1]))
     clean_word_rdd = words_rdd.map(lambda x: (x[0], cleanup_word(x[1]))).filter(lambda x: len(x[1])>1 and x[1] not in SW.value)
@@ -75,12 +99,32 @@ def validation_format(rdd_file_in_textfile):
     return rdd_docid_word
 
 def fillna(cp, cp0):
+    """
+    Fill in conditional probability with count 0 
+    if the word does not exist in the training set
+    """
     if cp == None: return cp0
     else: return cp
 
 def predict(rdd_test_data, rdd_train):
+    """
+    Making predictions with pior and conditional probabilty calculated from training
+    
+    Parameter
+    -----------------------
+    rdd_test_data -> RDD([(docid,content),...])
+    rdd_train -> LIST[RDD,RDD,RDD]
+                 rdd_train[0]: RDD of label, word and its conditional probability
+                 rdd_train[1]: RDD of label and its 0 count cond prob
+                 rdd_train[2]: RDD of label and its pior probability
+    
+    Return
+    -----------------------
+    rdd_pred.collect() -> LIST [label,....]
+    """
     labels = LABELS.value
     rdd_train_labword_cp, rdd_train_lab_cp0, rdd_train_lab_pp = rdd_train[0], rdd_train[1], rdd_train[2]
+    
     # (docid, label)
     rdd_test_docid = rdd_test_data.map(lambda x: x[0]) #document_ids
     rdd_test_doc_lab = rdd_test_docid.map(lambda x: (x, labels)).flatMapValues(lambda x: x)
@@ -160,50 +204,53 @@ if __name__ == "__main__":
     SW = sc.broadcast(stopwords.words('english'))
     PUNC = sc.broadcast(string.punctuation)
 
-    # Generate RDDs of tuples
+    # Generate RDDs of tuples and add docid to each of them
     rdd_train_data = sc.textFile(training_data).zipWithIndex().map(lambda x: (x[1],x[0]))
     rdd_train_label = sc.textFile(training_label).zipWithIndex().map(lambda x: (x[1],x[0]))
     rdd_test_data = sc.textFile(testing_data).zipWithIndex().map(lambda x: (x[1],x[0]))
-    # (content,label)
+    
+    # RDD [(content,label),..]
     rdd = rdd_train_data.join(rdd_train_label).map(lambda x: x[1])
 
     # Preprocessing --------------------------------------------------
-    # Preprocessing to labels, leaving only ones with 'CAT'
+    # Preprocessing to labels, 
+    # leaving only ones with 'CAT' and duplicate document contents if needed
     rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
-    # (label,content)
+    # RDD [(label,content),...]
     rdd = rdd.flatMapValues(lambda x: x).filter(lambda x: 'CAT' in x[1]).map(lambda x: (x[1],x[0]))
 
     # total numb of all docs
     all_doc_numb = rdd.count()
 
-    # Document Numbers for each label (RDD)
+    # Document Numbers for each label (RDD[(label,numb),...])
     doc_numb_in_label_rdd = rdd.map(lambda x: (x[0],1)).reduceByKey(lambda x,y: x+y)
     rdd = rdd.groupByKey().map(lambda x : (x[0], ' '.join(list(x[1])))).sortByKey(ascending=True)
 
     labels = rdd.map(lambda x: x[0]).collect()
     LABELS = sc.broadcast(labels)
 
-    # (label,word)
+    # RDD [(label,word),...]
     rdd = rdd.map(lambda x: (x[0], tokenize_words(x[1]))).flatMapValues(lambda x: x)
-    # ((label, word),1)
+    # RDD [((label, word),1),...]
     rdd = rdd.map(lambda x: ((x[0], cleanup_word(x[1])),1)).filter(lambda x: len(x[0][1])>1 and x[0][1] not in SW.value)
-    # ((label, word), count)
+    # RDD [((label, word), count),...]
     label_word_count_rdd = rdd.reduceByKey(lambda x,y: x+y)
 
-    # (label, 0)
+    # RDD [(label, 0),...]
     labels_0 = sc.parallelize(labels).map(lambda x: (x,0)).collect()
-    # all words in training
+    # All distinct words in training
     words_in_training = label_word_count_rdd.map(lambda x: x[0][1]).distinct()
-    # (word, [('CCAT',0),('MCAT',0),...])
-    # (('CCAT', word),0)
+    
+    # RDD [(word, [('CCAT',0),('MCAT',0),...]),...]
+    # RDD [(('CCAT', word),0),(('MCAT', word),0),...]
     words_in_training_with_lab = words_in_training.map(lambda x: (x,labels_0)).flatMapValues(lambda x: x).map(lambda x: ((x[1][0],x[0]),x[1][1]))
     full_label_wct_rdd = label_word_count_rdd.union(words_in_training_with_lab).reduceByKey(lambda x,y: x+y)
 
-    # (label,sum_count)
+    # Total word count in each label
     word_count_label = full_label_wct_rdd.map(lambda x: (x[0][0],x[1])).reduceByKey(lambda x,y: x+y)
-    # (label, (word,count))
+    # RDD [(label, (word,count)),...]
     full_label_wct_rdd = full_label_wct_rdd.map(lambda x: (x[0][0],(x[0][1],x[1])))
-    # (label, ((word,count),sum_count)) >>  ((label, word),(count,sum_count))
+    # RDD [(label, ((word,count),sum_count)),..] >>  [((label, word),(count,sum_count)),...]
     full_label_wct_rdd = full_label_wct_rdd.leftOuterJoin(word_count_label).map(lambda x: ((x[0],x[1][0][0]),(x[1][0][1],x[1][1])))
 
 
