@@ -65,13 +65,13 @@ def cleanup_word(word):
 
 def cond_prob(word_count, ttl_count):
     """
-    Compute conditional probability for each word
-    
+    This computes conditional probability for each word
+
     Parameter
     -----------------------
     word_count: count of this word in this label -> INT
     ttl_count: total word count in this label -> INT
-    
+
     Return
     -----------------------
     RDD([(doc_id, word),...])
@@ -82,12 +82,12 @@ def cond_prob(word_count, ttl_count):
 
 def validation_format(rdd_file_in_textfile):
     """
-    Formatting the test file content
-    
+    This formats the test file content
+
     Parameter
     -----------------------
     rdd_file_in_textfile -> RDD([(docid,content),...])
-    
+
     Return
     -----------------------
     rdd_docid_word -> RDD([(doc_id, word),...])
@@ -100,7 +100,7 @@ def validation_format(rdd_file_in_textfile):
 
 def fillna(cp, cp0):
     """
-    Fill in conditional probability with count 0 
+    This fills in conditional probability with count 0
     if the word does not exist in the training set
     """
     if cp == None: return cp0
@@ -108,8 +108,8 @@ def fillna(cp, cp0):
 
 def predict(rdd_test_data, rdd_train):
     """
-    Making predictions with pior and conditional probabilty calculated from training
-    
+    This makes predictions with pior and conditional probabilty calculated from training
+
     Parameter
     -----------------------
     rdd_test_data -> RDD([(docid,content),...])
@@ -117,14 +117,14 @@ def predict(rdd_test_data, rdd_train):
                  rdd_train[0]: RDD of label, word and its conditional probability
                  rdd_train[1]: RDD of label and its 0 count cond prob
                  rdd_train[2]: RDD of label and its pior probability
-    
+
     Return
     -----------------------
     rdd_pred.collect() -> LIST [label,....]
     """
     labels = LABELS.value
     rdd_train_labword_cp, rdd_train_lab_cp0, rdd_train_lab_pp = rdd_train[0], rdd_train[1], rdd_train[2]
-    
+
     # (docid, label)
     rdd_test_docid = rdd_test_data.map(lambda x: x[0]) #document_ids
     rdd_test_doc_lab = rdd_test_docid.map(lambda x: (x, labels)).flatMapValues(lambda x: x)
@@ -169,6 +169,9 @@ def cal_accuracy(label_list, pred_list):
     return accuracy
 
 def output_file(output_pred, output_path):
+    """
+    This outputs a .json file of the prediction list line by line.
+    """
     outF = open(output_path, "w")
     textList = '\n'.join(output_pred)
     outF.writelines(textList)
@@ -178,11 +181,11 @@ def output_file(output_pred, output_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
         epilog = "answer key", add_help = "How to use",
-        prog = "python p1.py [train-data] [train-label] [test-data] [optional args]")
+        prog = "python p1.py [file-directory] [optional args]")
 
     # Required args
-    parser.add_argument("paths", nargs=3, #required = True
-        help = "Paths of training-data, training-labels, and testing-data.")
+    parser.add_argument("path",
+        help = "Directory contains the input training and testing files")
 
     # Optional args
     parser.add_argument("-s", "--size", choices = ["vsmall", "small", "large"], default = "vsmall",
@@ -196,9 +199,9 @@ if __name__ == "__main__":
     sc = SparkContext()
 
     # Read in the variables
-    training_data = args['paths'][0]
-    training_label = args['paths'][1]
-    testing_data = args['paths'][2]
+    training_data = args['path'] + 'X_train_' + args['size'] + '.txt'
+    training_label = args['path'] + 'y_train_' + args['size'] + '.txt'
+    testing_data = args['path'] + 'X_test_' + args['size'] + '.txt'
 
     # Necessary Lists
     SW = sc.broadcast(stopwords.words('english'))
@@ -208,12 +211,12 @@ if __name__ == "__main__":
     rdd_train_data = sc.textFile(training_data).zipWithIndex().map(lambda x: (x[1],x[0]))
     rdd_train_label = sc.textFile(training_label).zipWithIndex().map(lambda x: (x[1],x[0]))
     rdd_test_data = sc.textFile(testing_data).zipWithIndex().map(lambda x: (x[1],x[0]))
-    
+
     # RDD [(content,label),..]
     rdd = rdd_train_data.join(rdd_train_label).map(lambda x: x[1])
 
     # Preprocessing --------------------------------------------------
-    # Preprocessing to labels, 
+    # Preprocessing to labels,
     # leaving only ones with 'CAT' and duplicate document contents if needed
     rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
     # RDD [(label,content),...]
@@ -240,7 +243,7 @@ if __name__ == "__main__":
     labels_0 = sc.parallelize(labels).map(lambda x: (x,0)).collect()
     # All distinct words in training
     words_in_training = label_word_count_rdd.map(lambda x: x[0][1]).distinct()
-    
+
     # RDD [(word, [('CCAT',0),('MCAT',0),...]),...]
     # RDD [(('CCAT', word),0),(('MCAT', word),0),...]
     words_in_training_with_lab = words_in_training.map(lambda x: (x,labels_0)).flatMapValues(lambda x: x).map(lambda x: ((x[1][0],x[0]),x[1][1]))
