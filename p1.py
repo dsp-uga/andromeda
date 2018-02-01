@@ -190,10 +190,11 @@ if __name__ == "__main__":
     # Optional args
     parser.add_argument("-s", "--size", choices = ["vsmall", "small", "large"], default = "vsmall",
         help = "Sizes to the selected file: \"vsmall\": very small, \"small\": small, \"large\": large [Default: \"vsmall\"]")
-    parser.add_argument("-a", "--algorithm", choices = ["NB", "LR"], default = "NB",
-        help = "Algorithms to process classification: \"NB\": Naive Bayes, \"LR\": Logistic Regression [Default: Naive Bayes]")
     parser.add_argument("-o", "--output", default = ".",
         help = "Path to the output directory where outputs will be written. [Default: \".\"]")
+    parser.add_argument("-a", "--accuracy", default = True,
+        help = "Accuracy of the testing prediction [Default: True]")
+
 
     args = vars(parser.parse_args())
     sc = SparkContext()
@@ -287,11 +288,14 @@ if __name__ == "__main__":
     # training_acc = cal_accuracy(label_train, pred_train)
     # print('Training Accuracy: %.2f %%' % (training_acc*100))
     # print('**** training_accuracy *********************************')
-    # label_test = sc.textFile('csci8360/p1/data/y_test_vsmall.txt').collect()
-    # # label_test = sc.textFile('COMP/Practicum/p1/training/y_test_vsmall.txt').collect()
-    # testing_acc = cal_accuracy(label_test, pred_test)
-    # print('Testing Accuracy: %.2f %%' % (testing_acc*100))
-    # print('**** testing_prediction ********************************')
+    if args['accuracy'] == True:
+        testing_label = args['path'] + 'y_test_' + args['size'] + '.txt'
+        if os.path.isfile(testing_label) == True:
+            label_test = sc.textFile(testing_label).collect()
+            testing_acc = cal_accuracy(label_test, pred_test)
+            print('Testing Accuracy: %.2f %%' % (testing_acc*100))
+            print('**********************************************')
+        else: print('Accuracy is not available!')
 
     # Output Files
     # outpath_train = os.path.join(args['output'], 'pred_train_' + args['size'] + '.json')

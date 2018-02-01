@@ -2,8 +2,8 @@
 
 (ordered alphabetically)
 
-* **Melanie** - [melanieihuei](https://github.com/melanieihuei)
-* **Nihal** - [nihalsoans91](https://github.com/nihalsoans91)
-* **Jenny** - [WeiwenXu21](https://github.com/WeiwenXu21)
+* **I-Huei Ho** - [melanieihuei](https://github.com/melanieihuei)
+* **Nihal Soans** - [nihalsoans91](https://github.com/nihalsoans91)
+* **Weiwen Xu** - [WeiwenXu21](https://github.com/WeiwenXu21)
 
 # Contributions
