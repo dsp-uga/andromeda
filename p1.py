@@ -19,7 +19,7 @@ def tokenize_words(no_quot_words):
     Firstly, to get rid of "&quot" by splitting the whole content with "&quot"
     Secondly, it splits the remaining contents with " "
     """
-    no_quot_words = no_quot_words.split("&quot") #.replace("--", " ")
+    no_quot_words = no_quot_words.replace("--", " ").split("&quot")
     new = []
     for item in no_quot_words:
         new.extend(item.split(" "))
@@ -181,13 +181,11 @@ def output_file(output_pred, output_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
         epilog = "answer key", add_help = "How to use",
-        prog = "python p1.py [train-file-directory] [test-file-directory] [optional args]")
+        prog = "python p1.py [train-data] [train-label] [test-data] [optional args]")
 
     # Required args
-    parser.add_argument("pathtrain",
-        help = "Directory contains the training files")
-    parser.add_argument("pathtest",
-        help = "Directory contains the testing files")
+    parser.add_argument("paths", nargs=3, #required = True
+        help = "Paths of training-data, training-labels, and testing-data.")
 
     # Optional args
     parser.add_argument("-s", "--size", choices = ["vsmall", "small", "large"], default = "vsmall",
@@ -197,18 +195,16 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--accuracy", default = True,
         help = "Accuracy of the testing prediction [Default: True]")
 
-
     args = vars(parser.parse_args())
-    conf = SparkConf().setAppName("App")
-    conf = (conf.setMaster('local[*]')
-        .set('spark.executor.memory', '4G')
-        .set('spark.driver.memory', '35G')
-    sc = SparkContext(conf=conf)
+    sc = SparkContext()
 
     # Read in the variables
-    training_data = args['pathtrain'] + 'X_train_' + args['size'] + '.txt'
-    training_label = args['pathtrain'] + 'y_train_' + args['size'] + '.txt'
-    testing_data = args['pathtest'] + 'X_test_' + args['size'] + '.txt'
+    training_data = args['paths'][0]
+    training_label = args['paths'][1]
+    testing_data = args['paths'][2]
+    # training_data = args['pathtrain'] + 'X_train_' + args['size'] + '.txt'
+    # training_label = args['pathtrain'] + 'y_train_' + args['size'] + '.txt'
+    # testing_data = args['pathtest'] + 'X_test_' + args['size'] + '.txt'
 
     # Necessary Lists
     SW = sc.broadcast(stopwords.words('english'))
@@ -305,5 +301,5 @@ if __name__ == "__main__":
     # Output Files
     # outpath_train = os.path.join(args['output'], 'pred_train_' + args['size'] + '.json')
     # output_file(pred_train, outpath_train)
-    outpath_test = os.path.join(args['output'], 'pred_test_' + args['size'] + '.json')
+    outpath_test = os.path.join(args['output'], 'pred_test_' + args['size'] + '.txt')
     output_file(pred_test, outpath_test)
