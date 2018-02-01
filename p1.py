@@ -197,7 +197,11 @@ if __name__ == "__main__":
 
 
     args = vars(parser.parse_args())
-    sc = SparkContext()
+    conf = SparkConf().setAppName("App")
+    conf = (conf.setMaster('local[*]')
+        .set('spark.executor.memory', '4G')
+        .set('spark.driver.memory', '35G')
+    sc = SparkContext(conf=conf)
 
     # Read in the variables
     training_data = args['path'] + 'X_train_' + args['size'] + '.txt'
