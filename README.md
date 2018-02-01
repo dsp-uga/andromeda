@@ -107,10 +107,12 @@ The output file `pred_test_<size>.json` can be customized by the size you select
   - **Optional Arguments**
 
     - `-s`: Sizes to the selected file. (Default: `vsmall`)
-    `vsmall` for very small dataset, `small` for small dataset, and `large` for large dataset. The output file will be connected with this selected size, e.g. `pred_test_vsmall.json`.
+
+       `vsmall` for very small dataset, `small` for small dataset, and `large` for large dataset. The output file will be connected with this selected size, e.g. `pred_test_vsmall.json`.
     - `-o`: Path to the output directory where outputs will be written. (Default: root directory)
     - `-a`: Accuracy of the testing prediction. (Default: `True`)
-    The options gives you the accuracy of the prediction. If the file of testing label does not exist, it will still output the file but print out `Accuracy is not available!`.
+
+       The options gives you the accuracy of the prediction. If the file of testing label does not exist, it will still output the file but print out `Accuracy is not available!`.
 
 ### Packages Implemented in Preprocessing
 
@@ -158,7 +160,7 @@ wnl = WordNetLemmatizer()
 word = wnl.lemmatize(word)
 ```
 
-We have tried three stemming packages from `nltk.stem` in this project, the examples of each stemming packages ([Lemmatizer](), [Lancaster](), [Porter]()) are introduced in the [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab. Notice that you have to download `wordnet` before importing it.
+We have tried three stemming packages from `nltk.stem` in this project. The examples of each stemming packages ([Lemmatizer](), [Lancaster](), [Porter]()) are introduced in the [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab. Notice that you have to download `wordnet` before importing it.
 After implementing words stemming, all the words are transferred to their stems, e.g. `cars`, `car's`, `car` all become `car`.
 
 ### Prediction
@@ -173,7 +175,7 @@ Add additional notes about how to deploy this on a live system
 
 ## Issues
 
-You might encounter different issues when running this classifier on local machine and Google Cloud Platform for the first time. See the following list of issues and solutions or More other issues are documented in the issues Tab: [ISSUES](https://github.com/dsp-uga/team-andromeda-p1/issues)
+You might encounter different issues when running this classifier on local machine and Google Cloud Platform for the first time. See the following list of issues and solutions or more other issues are documented in the [ISSUES](https://github.com/dsp-uga/team-andromeda-p1/issues) tab:
 
 **Local Machine (Windows)**
 
@@ -198,7 +200,7 @@ Please read [CONTRIBUTING.md](https://github.com/dsp-uga/team-andromeda-p1/blob/
 * **Weiwen Xu** - [WeiwenXu21](https://github.com/WeiwenXu21)
 * **I-Huei Ho** - [melanieihuei](https://github.com/melanieihuei)
 
-See the [CONTRIBUTOR](https://github.com/dsp-uga/team-andromeda-p1/blob/master/CONTRIBUTORS.md) file for details.
+See the [CONTRIBUTORS](https://github.com/dsp-uga/team-andromeda-p1/blob/master/CONTRIBUTORS.md) file for details.
 
 ## License
 

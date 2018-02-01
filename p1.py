@@ -181,11 +181,13 @@ def output_file(output_pred, output_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
         epilog = "answer key", add_help = "How to use",
-        prog = "python p1.py [file-directory] [optional args]")
+        prog = "python p1.py [train-file-directory] [test-file-directory] [optional args]")
 
     # Required args
-    parser.add_argument("path",
-        help = "Directory contains the input training and testing files")
+    parser.add_argument("pathtrain",
+        help = "Directory contains the training files")
+    parser.add_argument("pathtest",
+        help = "Directory contains the testing files")
 
     # Optional args
     parser.add_argument("-s", "--size", choices = ["vsmall", "small", "large"], default = "vsmall",
@@ -204,9 +206,9 @@ if __name__ == "__main__":
     sc = SparkContext(conf=conf)
 
     # Read in the variables
-    training_data = args['path'] + 'X_train_' + args['size'] + '.txt'
-    training_label = args['path'] + 'y_train_' + args['size'] + '.txt'
-    testing_data = args['path'] + 'X_test_' + args['size'] + '.txt'
+    training_data = args['pathtrain'] + 'X_train_' + args['size'] + '.txt'
+    training_label = args['pathtrain'] + 'y_train_' + args['size'] + '.txt'
+    testing_data = args['pathtest'] + 'X_test_' + args['size'] + '.txt'
 
     # Necessary Lists
     SW = sc.broadcast(stopwords.words('english'))
@@ -235,7 +237,7 @@ if __name__ == "__main__":
 
     labels = ['CCAT','MCAT','GCAT','ECAT']
     LABELS = sc.broadcast(labels)
-            
+
     # RDD [(label,word),...]
     rdd = rdd.map(lambda x: (x[0], tokenize_words(x[1]))).flatMapValues(lambda x: x)
     # RDD [((label, word),1),...]
@@ -292,7 +294,7 @@ if __name__ == "__main__":
     # print('Training Accuracy: %.2f %%' % (training_acc*100))
     # print('**** training_accuracy *********************************')
     if args['accuracy'] == True:
-        testing_label = args['path'] + 'y_test_' + args['size'] + '.txt'
+        testing_label = args['pathtest'] + 'y_test_' + args['size'] + '.txt'
         if os.path.isfile(testing_label) == True:
             label_test = sc.textFile(testing_label).collect()
             testing_acc = cal_accuracy(label_test, pred_test)
