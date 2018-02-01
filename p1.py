@@ -232,11 +232,10 @@ if __name__ == "__main__":
 
     # Document Numbers for each label (RDD[(label,numb),...])
     doc_numb_in_label_rdd = rdd.map(lambda x: (x[0],1)).reduceByKey(lambda x,y: x+y)
-    rdd = rdd.groupByKey().map(lambda x : (x[0], ' '.join(list(x[1])))).sortByKey(ascending=True)
 
-    labels = rdd.map(lambda x: x[0]).collect()
+    labels = ['CCAT','MCAT','GCAT','ECAT']
     LABELS = sc.broadcast(labels)
-
+            
     # RDD [(label,word),...]
     rdd = rdd.map(lambda x: (x[0], tokenize_words(x[1]))).flatMapValues(lambda x: x)
     # RDD [((label, word),1),...]
