@@ -23,7 +23,7 @@ These instructions will get you a copy of the project up and running on your loc
 - [Google Cloud Platform](https://cloud.google.com)
 - [Anaconda](https://www.anaconda.com/) - packages manager for [nltk](), [string]()
 
-### Installing
+### Environment Setup
 
 ### Anaconda
 
@@ -98,7 +98,7 @@ $ python p1.py [file-directory] [optional args]
 $ usr/bin/spark-submit p1.py [file-directory] [optional args]
 ```
 
-The output file `pred_test_<size>.json` can be customized by the size you selected, and saved to directory you specified. The required and optional arguments are as follows:
+The output file `pred_test_<size>.txt` can be customized by the size you selected, and saved to directory you specified. The required and optional arguments are as follows:
 
   - **Required Arguments**
 
@@ -108,13 +108,13 @@ The output file `pred_test_<size>.json` can be customized by the size you select
 
     - `-s`: Sizes to the selected file. (Default: `vsmall`)
 
-       `vsmall` for very small dataset, `small` for small dataset, and `large` for large dataset. The output file will be connected with this selected size, e.g. `pred_test_vsmall.json`.
+       `vsmall` for very small dataset, `small` for small dataset, and `large` for large dataset. The output file will be connected with this selected size, e.g. `pred_test_vsmall.txt`.
     - `-o`: Path to the output directory where outputs will be written. (Default: root directory)
     - `-a`: Accuracy of the testing prediction. (Default: `True`)
 
        The options gives you the accuracy of the prediction. If the file of testing label does not exist, it will still output the file but print out `Accuracy is not available!`.
 
-### Packages Implemented in Preprocessing
+### Packages used
 
 After Splitting the document content, we implement punctuation stripping and words stemming by several python APIs. There are some brief explanations about the packages and more details in the  [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab.
 
@@ -163,15 +163,114 @@ word = wnl.lemmatize(word)
 We have tried three stemming packages from `nltk.stem` in this project. The examples of each stemming packages ([Lemmatizer](), [Lancaster](), [Porter]()) are introduced in the [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab. Notice that you have to download `wordnet` before importing it.
 After implementing words stemming, all the words are transferred to their stems, e.g. `cars`, `car's`, `car` all become `car`.
 
-### Prediction
+### Algorithm
 
-should say something but i dont know what to say
+#### Overview
+
+This project mainly uses [Naive Bayes classifier](https://github.com/dsp-uga/team-andromeda-p1/wiki/Naive-Bayes-Classifier) with several preprcessing methods. There is a brief flow of what we did:
+
+1. Words Splitting by white space (Optional: Replace double hyphens `--` by white space)
+2. Words Tokenizing
+3. Punctuations Removing - remove punctuations before and after the words
+4. Words Stemming - Lancaster, Porter, or Lemmatizer stemming methods
+5. Punctuations Removing again
+6. Stopwords Removing
+7. Naive Bayes Classifier
+8. Prediction
+
+See more details of each section in [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab.
 
 
+#### Data Structure
 
-## Deployment
+We expressed the data structure inside RDD for each stage as follows:
 
-Add additional notes about how to deploy this on a live system
+- Input data with label
+
+```
+RDD([(doc_id_0, document_0, label_0),
+     (doc_id_1, document_1, label_1), ...])
+```
+
+- Training set after preprocessing
+
+```
+RDD([((label_0, word_0), (word_count_0, word_total_count_in_label_0)),
+     ((label_0, word_1), (word_count_1, word_total_count_in_label_0)), ...])
+```
+
+- Training set after NB classifier
+
+```
+rdd_train = [rdd_train_labword_cp, rdd_train_lab_cp0, rdd_train_lab_pp]
+rdd_train_labword_cp
+  = RDD([((label_0, word_0), cond_prob_of_word_0),
+         ((label_0, word_1), cond_prob_of_word_1), ...])
+rdd_train_lab_cp0
+  = RDD([(label_0, cond_prob_of_count0_in_label_0),
+         (label_1, cond_prob_of_count0_in_label_1), ...])
+rdd_train_lab_pp
+ = RDD([(label_0, prior_prob_in_label_0),
+        (label_1, prior_prob_in_label_1), ...])
+```
+
+- Testing set before prediction
+
+```
+RDD([((label_0, word_0), doc_id_0),
+     ((label_0, word_1), doc_id_0), ...])
+```
+
+- Training and Testing set during prediction
+
+```
+RDD([((doc_id_0, label_0), (cond_prob_0, prior_prob_0)),
+     ((doc_id_0, label_0), (cond_prob_1, prior_prob_0)), ...])
+```
+
+You can read the script [p1.py](https://github.com/dsp-uga/team-andromeda-p1/blob/master/p1.py) to know more details of how the formats work for NB classifier by the comments we left in the codes.
+
+#### Naive Bayes Classifier
+
+For each label, we kept those words not in the label but in other labels with count 0. Conditional probability of word i, given label k, are calculated by the word count in the label k divided by the total word count in the label k with laplace smoothing.
+For example, the conditional probability of word `happy`, given the catogory `CCAT` is calculated by following equation:
+
+<p align = "center">
+<img align = "center"  src="https://latex.codecogs.com/gif.latex?\frac{\text{count}_\text{happy}&plus;1}{\text{total-count}_\text{CCAT}&plus;\text{V}}" title="\frac{\text{count}_\text{happy}+1}{\text{total-count}_\text{CCAT}+\text{V}}" />
+</p>
+
+where the value V is the distinct amount of words in training data without considering the label.
+More details about naive Bayes theory and laplace smoothing are in [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab.
+
+
+#### Prediction
+
+The prediction of each document in testing data are selected by the category with largest value of sum of conditional probabilities and prior probability after log transformation. For example, in document 1 of `vsmall` data, we'll have to calculate following values of each category:
+
+<p align="center">
+<img src="https://latex.codecogs.com/gif.latex?log(P(\text{category}_k))&space;&plus;&space;\sum_i&space;log({P(\text{word}_i|\text{category}_k)})" title="log(P(\text{category}_k)) + \sum_i log({P(\text{word}_i|\text{category}_k)})" />
+</p>
+
+Since we got -436.92 for category MCAT, -429.91 for category CCAT, -447.68 for category GCAT, and -441.24 for category ECAT, then we assigned CCAT for this document 1. Once the predicted category is one of the category of the document category list, we regarded it as success prediction. The classifier will automatically output a prediction list file (`pred_test_vsmall.txt`) and prediction accuracy if the testing label file exists.
+
+## Test results
+
+We tried several different situations in preprocessing section and the results are as follows:
+
+
+|Tokenizing           |Stemming                    |Accuracy|
+|---------------------|----------------------------|--------|
+|Remove double hyphens|Lemmatizer                  |94.51%  |
+|Remove double hyphens|Lemmatizer + Porter         |94.21%  |  
+|Remove double hyphens|Lemmatizer + Lancaster      |     %  |
+|                     |Porter                      |94.19%  |
+|Remove double hyphens|Porter                      |     %  |
+
+Therefore, we recommend using only Lemmatizer words stemming and removing double hyphens between two words.
+
+## Future Research
+
+Since Naive Bayes classifier considers count for calculating the probabilities, it is tricky to implement TF-IDF in NB classifier. However, [TF-IDF]() (Term Frequency Inverse Document Frequency) is reasonable to scale important words in each category. To improve this classifier, we expect to further the project by implementing TF-IDF to [Logistic Regression]() classifier or [K Nearest Neighbor]() classifier.
 
 ## Issues
 
@@ -192,7 +291,7 @@ You might encounter different issues when running this classifier on local machi
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://github.com/dsp-uga/team-andromeda-p1/blob/master/CONTRIBUTORS.md) for details on our code of conduct, and the process for submitting pull requests to us.
+guess we have to cite here.
 
 ## Authors
 
@@ -205,9 +304,3 @@ See the [CONTRIBUTORS](https://github.com/dsp-uga/team-andromeda-p1/blob/master/
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Inspiration : Getting an A in Dr Shannon Quinn's Data Science Practicum Course
-* Hat tip to anyone who's code was used
-* etc

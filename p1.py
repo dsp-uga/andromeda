@@ -255,7 +255,7 @@ if __name__ == "__main__":
     word_count_label = full_label_wct_rdd.map(lambda x: (x[0][0],x[1])).reduceByKey(lambda x,y: x+y)
     # RDD [(label, (word,count)),...]
     full_label_wct_rdd = full_label_wct_rdd.map(lambda x: (x[0][0],(x[0][1],x[1])))
-    # RDD [(label, ((word,count),sum_count)),..] >>  [((label, word),(count,sum_count)),...]
+    # RDD [(label, word) ,(count,sum_count)),..] >>  [((label, word),(count,sum_count)),...]
     full_label_wct_rdd = full_label_wct_rdd.leftOuterJoin(word_count_label).map(lambda x: ((x[0],x[1][0][0]),(x[1][0][1],x[1][1])))
 
 
