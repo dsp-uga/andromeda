@@ -43,6 +43,34 @@ Download the latest, pre-built for Hadoop 2.6, version of Spark.
 
 Go to [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab for more details of running IDE for Pyspark. ([IDE Setting for Pyspark](https://github.com/dsp-uga/team-andromeda-p1/wiki/IDE-Setting-for-Pyspark))
 
+### NLTK
+To Download NLTK stopwords on GCP
+First 
+```
+$ pip install nltk
+```
+Once installed you'll have to Download the stopwords file 
+```
+$ python
+```
+Once python prompt has started 
+```
+>>> import nltk
+>>> nltk.download()
+```
+This will start a UI or a Command prompt input based instructions
+
+#### Comand prompt Mode
+Type d and enter and type stopwords this will initiate a download
+Best way would be ```python -m nltk.downloader -d /usr/local/share/nltk_data popular```
+
+#### UI mode
+Search for the sopword button and press download
+
+Post this please make sure that all nltk files are in ```/usr/local/share```
+
+
+
 ## Running the tests
 
 You can run `p1.py` via regular **python** or run the script via **spark-submit**. You should specify the path to your spark-submit.
