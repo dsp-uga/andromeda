@@ -279,7 +279,11 @@ You might encounter different issues when running this classifier on local machi
 
 ## References
 
-^Some issues were resolved using the help of the almighty Stackoverflow
+Some issues were resolved using the help of the almighty Stackoverflow.
+
+[1] [Naive Bayes Text Classification - Stanford University](https://nlp.stanford.edu/IR-book/html/htmledition/naive-bayes-text-classification-1.html)
+
+[2] the paper you sent to us?
 
 
 
