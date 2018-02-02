@@ -31,5 +31,6 @@
   * Preprocessing coding and debugging
   * Naive Bayes coding and debugging
   * Testing and Experiments
+  * ReadMe
   * Wiki
   
