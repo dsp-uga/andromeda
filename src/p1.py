@@ -19,7 +19,7 @@ def tokenize_words(no_quot_words):
     Firstly, to get rid of "&quot" by splitting the whole content with "&quot"
     Secondly, it splits the remaining contents with " "
     """
-    no_quot_words = no_quot_words.split("&quot") #.replace("--", " ")
+    no_quot_words = no_quot_words.replace("--", " ").split("&quot")
     new = []
     for item in no_quot_words:
         new.extend(item.split(" "))
@@ -181,13 +181,13 @@ def output_file(output_pred, output_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "CSCI 8360 Project 1",
         epilog = "answer key", add_help = "How to use",
-        prog = "python p1.py [train-file-directory] [test-file-directory] [optional args]")
+        prog = "python p1.py [training-directory] [testing-directory] [optional args]")
 
     # Required args
-    parser.add_argument("pathtrain",
-        help = "Directory contains the training files")
-    parser.add_argument("pathtest",
-        help = "Directory contains the testing files")
+    parser.add_argument("ptrain",
+    	help = "Directory of training data and labels")
+    parser.add_argument("ptest",
+    	help = "Directory of testing data and labels")
 
     # Optional args
     parser.add_argument("-s", "--size", choices = ["vsmall", "small", "large"], default = "vsmall",
@@ -197,15 +197,13 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--accuracy", default = True,
         help = "Accuracy of the testing prediction [Default: True]")
 
-
     args = vars(parser.parse_args())
-
     sc = SparkContext()
 
     # Read in the variables
-    training_data = args['pathtrain'] + 'X_train_' + args['size'] + '.txt'
-    training_label = args['pathtrain'] + 'y_train_' + args['size'] + '.txt'
-    testing_data = args['pathtest'] + 'X_test_' + args['size'] + '.txt'
+    training_data = str(args['ptrain']) + 'X_train_' + str(args['size']) + '.txt'
+    training_label = str(args['ptrain']) + 'y_train_' + str(args['size']) + '.txt'
+    testing_data = str(args['ptest']) + 'X_test_' + str(args['size']) + '.txt'
 
     # Necessary Lists
     SW = sc.broadcast(stopwords.words('english'))
@@ -256,7 +254,7 @@ if __name__ == "__main__":
     word_count_label = full_label_wct_rdd.map(lambda x: (x[0][0],x[1])).reduceByKey(lambda x,y: x+y)
     # RDD [(label, (word,count)),...]
     full_label_wct_rdd = full_label_wct_rdd.map(lambda x: (x[0][0],(x[0][1],x[1])))
-    # RDD [(label, ((word,count),sum_count)),..] >>  [((label, word),(count,sum_count)),...]
+    # RDD [(label, word) ,(count,sum_count)),..] >>  [((label, word),(count,sum_count)),...]
     full_label_wct_rdd = full_label_wct_rdd.leftOuterJoin(word_count_label).map(lambda x: ((x[0],x[1][0][0]),(x[1][0][1],x[1][1])))
 
 
@@ -291,7 +289,7 @@ if __name__ == "__main__":
     # print('Training Accuracy: %.2f %%' % (training_acc*100))
     # print('**** training_accuracy *********************************')
     if args['accuracy'] == True:
-        testing_label = args['pathtest'] + 'y_test_' + args['size'] + '.txt'
+        testing_label = args['ptest'] + 'y_test_' + args['size'] + '.txt'
         if os.path.isfile(testing_label) == True:
             label_test = sc.textFile(testing_label).collect()
             testing_acc = cal_accuracy(label_test, pred_test)
@@ -302,5 +300,5 @@ if __name__ == "__main__":
     # Output Files
     # outpath_train = os.path.join(args['output'], 'pred_train_' + args['size'] + '.json')
     # output_file(pred_train, outpath_train)
-    outpath_test = os.path.join(args['output'], 'pred_test_' + args['size'] + '.json')
+    outpath_test = os.path.join(args['output'], 'pred_test_' + args['size'] + '.txt')
     output_file(pred_test, outpath_test)

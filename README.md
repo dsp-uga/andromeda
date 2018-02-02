@@ -51,41 +51,7 @@ Download the latest, pre-built for Hadoop 2.6, version of Spark.
 * Click on the link in Step 4
 * Once downloaded, unzip the file and place it in a directory of your choice
 
-## IDE settings to work with PySpark
-
-### Anaconda Interpreter
-
-One first needs to add specific PySpark paths to the ones of the Anaconda Interpreter
-* Open your chosen IDE
-* Open the cloned Python project with the Anaconda Interpreter
-* (IntelliJ only) File -> Project Structure -> SDKs -> your Anaconda interpreter
-* (PyCharm only) File -> Default Settings -> Project Interpreter -> your Anaconda interpreter
-* (PyCharm only) Click on the "..." icon on the right of your interpreter path, then on "More...", your project interpreter, and finally on the last icon on the bottom right ("Show paths for the selected interpreter")
-* Click on "+"
-* Select your_path_to_spark/spark-X.X.X-bin-hadoopX.X/python
-* "OK"
-* Click once again on "+"
-* Select your_path_to_spark/spark-X.X.X-bin-hadoopX.X/python/lib/py4j-X.X-src.zip
-* Cliquer sur OK
-* OK -> Apply -> OK
-
-### Project's environment variables
-
-Finally, we have to set the specific PySpark environment variables to be able to run it in local.
-
-* Run -> Edit Configurations -> Defaults -> Python
-* In the "Environment variables" section, click on "...", then on "+"
-* Cliquer sur l'icône "+"
-* Name: PYTHONPATH
-* Value: your_path_to_spark/spark-X.X.X-bin-hadoopX.X/python:your_path_to_spark/spark-X.X.X-bin-hadoopX.X/python/lib/py4j-X.X-src.zip
-* Click again on "+"
-* Name: SPARK_HOME
-* Value: your_path_to_spark/spark-X.X.X-bin-hadoopX.X
-* OK -> Apply
-* Add the same paths for each test module you will use (Python tests - Unittests for example). Add them for every test module to not have any problem later
-* OK
-
-The PySpark imports in your code should now be recognized, and the code should be able to run without any error.
+Go to [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab for more details of running IDE for Pyspark. ([IDE Setting for Pyspark](https://github.com/dsp-uga/team-andromeda-p1/wiki/IDE-Setting-for-Pyspark))
 
 ## Running the tests
 
@@ -119,7 +85,7 @@ The output file `pred_test_<size>.txt` can be customized by the size you selecte
 After Splitting the document content, we implement punctuation stripping and words stemming by several python APIs. There are some brief explanations about the packages and more details in the  [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab.
 
 
-1. **Punctuation**: `string`
+#### Punctuation: `string`
 
 ```Python
 import string
@@ -129,7 +95,7 @@ PUNC = string.punctuation
 Import the `string` package, then the `string.punctuation` gives you the list of all punctuation.
 We remove all punctuation before and after the word, but ignore those punctuation between two words, e.g. `happy--newyear`, `super.....bowl`
 
-2. **Stopwords**: `nltk.corpus`
+#### Stopwords: `nltk.corpus`
 
 ```Python
 import nltk
@@ -141,7 +107,7 @@ SW = stopwords.words('english')
 Import the `stopwords` under `nltk.corpus`, then `stopwords.words('english')` gives you the stopwords in English. Notice that you should import `nltk` first, and download `stopwords` from it before importing it from corpus.
 We remove those stopwords that might confuse our classifier of the important words, e.g. `the`, `is`, `you`.
 
-3. **Words Stemming**: `nltk.stem`
+#### Words Stemming: `nltk.stem`
 
 ```Python
 import nltk
@@ -257,14 +223,13 @@ Since we got -436.92 for category MCAT, -429.91 for category CCAT, -447.68 for c
 
 We tried several different situations in preprocessing section and the results are as follows:
 
-
 |Tokenizing           |Stemming                    |Accuracy|
 |---------------------|----------------------------|--------|
 |Remove double hyphens|Lemmatizer                  |94.51%  |
 |Remove double hyphens|Lemmatizer + Porter         |94.21%  |  
 |Remove double hyphens|Lemmatizer + Lancaster      |     %  |
 |                     |Porter                      |94.19%  |
-|Remove double hyphens|Porter                      |     %  |
+|                     |Lemmatizer                  |94.52%  |
 
 Therefore, we recommend using only Lemmatizer words stemming and removing double hyphens between two words.
 
