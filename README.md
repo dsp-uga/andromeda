@@ -273,9 +273,11 @@ You might encounter different issues when running this classifier on local machi
 - [Resource wordnet not found](https://github.com/dsp-uga/team-andromeda-p1/issues/36)
 - [Name node is in safe mode](https://github.com/dsp-uga/team-andromeda-p1/issues/37)
 
-## Contributing
+## References 
 
-guess we have to cite here.
+^Some issues were resolved using the help of the almighty Stackoverflow
+
+
 
 ## Authors
 
