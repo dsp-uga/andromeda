@@ -31,16 +31,6 @@ Anaconda is a complete Python distribution embarking automatically the most comm
 
 Download and install Anaconda (https://www.continuum.io/downloads).
 
-### PyCharm or IntelliJ Idea
-
-IntelliJ Idea is a complete IDE with, between others, Java, Scala and Python pluggins. PyCharm is an equivalent IDE, but with Python as only pluggin (therefore lighter).
-
-Download one of those two IDEs (community edition)
-* PyCharm: https://www.jetbrains.com/pycharm/download/
-* IntelliJ Idea: https://www.jetbrains.com/idea/download/
-
-If you choose IntelliJ Idea, you must install the Python pluggin, which is not incorporated by default.
-
 ### Spark
 
 Download the latest, pre-built for Hadoop 2.6, version of Spark.
@@ -227,11 +217,12 @@ We tried several different situations in preprocessing section and the results a
 |---------------------|----------------------------|--------|
 |Remove double hyphens|Lemmatizer                  |94.51%  |
 |Remove double hyphens|Lemmatizer + Porter         |94.21%  |  
-|Remove double hyphens|Lemmatizer + Lancaster      |     %  |
+|                     |Lemmatizer + Lancaster      |94.04%  |
 |                     |Porter                      |94.19%  |
 |                     |Lemmatizer                  |94.52%  |
+|Remove dots          |Lemmatizer                  |94.28%  |
 
-Therefore, we recommend using only Lemmatizer words stemming and removing double hyphens between two words.
+Therefore, we recommend using only Lemmatizer words stemming.
 
 ## Future Research
 
