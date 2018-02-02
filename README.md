@@ -76,17 +76,19 @@ Post this please make sure that all nltk files are in ```/usr/local/share```
 You can run `p1.py` via regular **python** or run the script via **spark-submit**. You should specify the path to your spark-submit.
 
 ```
-$ python p1.py [file-directory] [optional args]
+$ python p1.py [training-directory] [testing-directory] [optional args]
 ```
 ```
-$ usr/bin/spark-submit p1.py [file-directory] [optional args]
+$ usr/bin/spark-submit p1.py [training-directory] [testing-directory] [optional args]
 ```
 
 The output file `pred_test_<size>.txt` can be customized by the size you selected, and saved to directory you specified. The required and optional arguments are as follows:
 
   - **Required Arguments**
 
-    - `path`: Directory contains the input training and testing files
+    - `ptrain`: Directory contains the input training files
+
+    - `ptest`: Directory contains the input testing files
 
   - **Optional Arguments**
 
