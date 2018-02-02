@@ -31,6 +31,8 @@ Anaconda is a complete Python distribution embarking automatically the most comm
 
 Download and install Anaconda (https://www.continuum.io/downloads).
 
+The `environment.yml` file for conda is placed in [Extra](https://github.com/dsp-uga/team-andromeda-p1/tree/master/Extra) for your ease of installation
+
 ### Spark
 
 Download the latest, pre-built for Hadoop 2.6, version of Spark.
