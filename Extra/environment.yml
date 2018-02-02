@@ -1,0 +1,79 @@
+name: datasp
+channels:
+- defaults
+dependencies:
+- bleach=2.1.2=py36_0
+- ca-certificates=2017.08.26=h94faf87_0
+- certifi=2017.11.5=py36hb8ac631_0
+- colorama=0.3.9=py36h029ae33_0
+- decorator=4.2.1=py36_0
+- entrypoints=0.2.3=py36hfd66bb0_2
+- html5lib=1.0.1=py36h047fa9f_0
+- icc_rt=2017.0.4=h97af966_0
+- icu=58.2=ha66f8fd_1
+- intel-openmp=2018.0.0=hd92c6cd_8
+- ipykernel=4.7.0=py36h2f9c1c0_0
+- ipython=6.2.1=py36h9cf0123_1
+- ipython_genutils=0.2.0=py36h3c5d0ee_0
+- ipywidgets=7.1.0=py36_0
+- jedi=0.11.1=py36_0
+- jinja2=2.10=py36h292fed1_0
+- jpeg=9b=hb83a4c4_2
+- jsonschema=2.6.0=py36h7636477_0
+- jupyter=1.0.0=py36h422fd7e_2
+- jupyter_client=5.2.1=py36_0
+- jupyter_console=5.2.0=py36h6d89b47_1
+- jupyter_core=4.4.0=py36h56e9d50_0
+- libpng=1.6.32=h140d38e_4
+- markupsafe=1.0=py36h0e26971_1
+- mistune=0.8.3=py36_0
+- mkl=2018.0.1=h2108138_4
+- nbconvert=5.3.1=py36h8dc0fde_0
+- nbformat=4.4.0=py36h3a5bc1b_0
+- notebook=5.3.1=py36_0
+- numpy=1.14.0=py36h4a99626_0
+- openssl=1.0.2n=h74b6da3_0
+- pandas=0.22.0=py36h6538335_0
+- pandoc=1.19.2.1=hb2460c7_1
+- pandocfilters=1.4.2=py36h3ef6317_1
+- parso=0.1.1=py36hae3edee_0
+- pickleshare=0.7.4=py36h9de030f_0
+- pip=9.0.1=py36h226ae91_4
+- prompt_toolkit=1.0.15=py36h60b8f86_0
+- py4j=0.10.6=py36_0
+- pygments=2.2.0=py36hb010967_0
+- pyqt=5.6.0=py36hb5ed885_5
+- pyspark=2.2.0=py36_0
+- python=3.6.4=h6538335_1
+- python-dateutil=2.6.1=py36h509ddcb_1
+- pytz=2017.3=py36h1d3fa6b_0
+- pyzmq=16.0.3=py36he714bf5_0
+- qt=5.6.2=vc14h6f8c307_12
+- qtconsole=4.3.1=py36h99a29a9_0
+- send2trash=1.4.2=py36_0
+- setuptools=38.4.0=py36_0
+- simplegeneric=0.8.1=py36heab741f_0
+- sip=4.18.1=py36h9c25514_2
+- six=1.11.0=py36h4db2310_1
+- sqlite=3.20.1=h9eeafa9_2
+- testpath=0.3.1=py36h2698cfe_0
+- tornado=4.5.3=py36_0
+- traitlets=4.3.2=py36h096827d_0
+- vc=14=h0510ff6_3
+- vs2015_runtime=14.0.25123=3
+- wcwidth=0.1.7=py36h3d5aa90_0
+- webencodings=0.5.1=py36h67c50ae_1
+- wheel=0.30.0=py36h6c3ec14_1
+- widgetsnbextension=3.1.0=py36_0
+- wincertstore=0.2=py36h7fe50ca_0
+- zlib=1.2.11=h8395fce_2
+- pip:
+  - ipython-genutils==0.2.0
+  - jupyter-client==5.2.1
+  - jupyter-console==5.2.0
+  - jupyter-core==4.4.0
+  - nltk==3.2.5
+  - prompt-toolkit==1.0.15
+  - stop-words==2015.2.23.1
+prefix: C:\Users\nihal\AppData\Local\conda\conda\envs\datasp
+
