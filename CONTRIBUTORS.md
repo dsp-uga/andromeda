@@ -13,6 +13,7 @@
 
 # Contributions
 * **I-Huei Ho**
+  
   Naive Bayes coding and debugging
   Preprocessing coding and debugging
   Testing and Experiments
@@ -20,11 +21,13 @@
   Wiki
 
 * **Nihal Soans**
+  
   GCP
   ReadMe
   Wiki
 
 * **Weiwen Xu**
+  
   Preprocessing coding and debugging
   Naive Bayes coding and debugging
   Testing and Experiments
