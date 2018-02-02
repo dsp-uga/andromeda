@@ -2,7 +2,7 @@
 
 This repository contains a Naive Bayes classifier implemented on document classification which is completed on CSCI 8360, Data Science Practicum at the University of Georgia, Spring 2018.
 
-This project uses the Reuters Corpus, a set of news stories split into a [hierarchy of categories](), but only specifies four categories as follows:
+This project uses the Reuters Corpus, a set of news stories split into a [hierarchy of categories](https://github.com/dsp-uga/team-andromeda-p1/wiki/Hierarchy-of-Categories), but only specifies four categories as follows:
 
 1. **CCAT**: Corporate / Industrial
 2. **ECAT**: Economics
@@ -21,7 +21,7 @@ These instructions will get you a copy of the project up and running on your loc
 - [Apache Spark 2.2.1](http://spark.apache.org/)
 - [Pyspark 2.2.1](https://pypi.python.org/pypi/pyspark/2.2.1) - Python API for Apache Spark
 - [Google Cloud Platform](https://cloud.google.com)
-- [Anaconda](https://www.anaconda.com/) - packages manager for [nltk](), [string]()
+- [Anaconda](https://www.anaconda.com/) - packages manager for [nltk](http://www.nltk.org/), [string](https://docs.python.org/3/library/string.html)
 
 ### Environment Setup
 
@@ -45,15 +45,15 @@ Go to [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab for more det
 
 ### NLTK
 To Download NLTK stopwords on GCP
-First 
+First
 ```
 $ pip install nltk
 ```
-Once installed you'll have to Download the stopwords file 
+Once installed you'll have to Download the stopwords file
 ```
 $ python
 ```
-Once python prompt has started 
+Once python prompt has started
 ```
 >>> import nltk
 >>> nltk.download()
@@ -144,14 +144,14 @@ wnl = WordNetLemmatizer()
 word = wnl.lemmatize(word)
 ```
 
-We have tried three stemming packages from `nltk.stem` in this project. The examples of each stemming packages ([Lemmatizer](), [Lancaster](), [Porter]()) are introduced in the [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab. Notice that you have to download `wordnet` before importing it.
+We have tried three stemming packages from `nltk.stem` in this project. The examples of each stemming packages (Lemmatizer, Lancaster, Porter) are introduced in the [WIKI](https://github.com/dsp-uga/team-andromeda-p1/wiki) tab. Notice that you have to download `wordnet` before importing it.
 After implementing words stemming, all the words are transferred to their stems, e.g. `cars`, `car's`, `car` all become `car`.
 
 ### Algorithm
 
 #### Overview
 
-This project mainly uses [Naive Bayes classifier](https://github.com/dsp-uga/team-andromeda-p1/wiki/Naive-Bayes-Classifier) with several preprcessing methods. There is a brief flow of what we did:
+This project mainly uses [Naive Bayes classifier](https://github.com/dsp-uga/team-andromeda-p1/wiki/Naive-Bayes#naive-bayes-classifier) with several preprcessing methods. There is a brief flow of what we did:
 
 1. Words Splitting by white space (Optional: Replace double hyphens `--` by white space)
 2. Words Tokenizing
@@ -212,7 +212,7 @@ RDD([((doc_id_0, label_0), (cond_prob_0, prior_prob_0)),
      ((doc_id_0, label_0), (cond_prob_1, prior_prob_0)), ...])
 ```
 
-You can read the script [p1.py](https://github.com/dsp-uga/team-andromeda-p1/blob/master/p1.py) to know more details of how the formats work for NB classifier by the comments we left in the codes.
+You can read the script [p1.py](https://github.com/dsp-uga/team-andromeda-p1/blob/master/src/p1.py) to know more details of how the formats work for NB classifier by the comments we left in the codes.
 
 #### Naive Bayes Classifier
 
@@ -254,7 +254,7 @@ Therefore, we recommend using only Lemmatizer words stemming.
 
 ## Future Research
 
-Since Naive Bayes classifier considers count for calculating the probabilities, it is tricky to implement TF-IDF in NB classifier. However, [TF-IDF]() (Term Frequency Inverse Document Frequency) is reasonable to scale important words in each category. To improve this classifier, we expect to further the project by implementing TF-IDF to [Logistic Regression]() classifier or [K Nearest Neighbor]() classifier.
+Since Naive Bayes classifier considers count for calculating the probabilities, it is tricky to implement TF-IDF in NB classifier. However, TF-IDF (Term Frequency Inverse Document Frequency) is reasonable to scale important words in each category. To improve this classifier, we expect to further the project by implementing TF-IDF to Logistic Regression classifier or K Nearest Neighbor classifier.
 
 ## Issues
 
@@ -273,7 +273,7 @@ You might encounter different issues when running this classifier on local machi
 - [Resource wordnet not found](https://github.com/dsp-uga/team-andromeda-p1/issues/36)
 - [Name node is in safe mode](https://github.com/dsp-uga/team-andromeda-p1/issues/37)
 
-## References 
+## References
 
 ^Some issues were resolved using the help of the almighty Stackoverflow
 
