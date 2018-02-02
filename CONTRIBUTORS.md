@@ -7,4 +7,6 @@
 * **Weiwen Xu** - [WeiwenXu21](https://github.com/WeiwenXu21)
 
 ### Shadow Contributors
-* **Dr Shannon** - [magsol](https://github.com/magsol)
+* **Dr Shannon Quinn** - [magsol](https://github.com/magsol)
+* **Stack Over Flow** - [Stackoverflow](https://stackoverflow.com/)
+* **Spark Community** - [Apache Spark Community](https://spark.apache.org/community.html)
