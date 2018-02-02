@@ -218,6 +218,68 @@ RDD([((doc_id_0, label_0), (cond_prob_0, prior_prob_0)),
 
 You can read the script [p1.py](https://github.com/dsp-uga/team-andromeda-p1/blob/master/src/p1.py) to know more details of how the formats work for NB classifier by the comments we left in the codes.
 
+#### Preprocessing
+1. Join Label and Content
+```
+rdd = rdd_train_data.join(rdd_train_label).map(lambda x: x[1])
+```
+Join two rdds that have been zipped with index to link labels with documents
+
+2. Duplicate Documents with multiply labels
+```
+rdd = rdd.map(lambda x: (x[0], x[1].split(',')))
+rdd = rdd.flatMapValues(lambda x: x).filter(lambda x: 'CAT' in x[1]).map(lambda x: (x[1],x[0]))
+```
+
+3. Tokenize Words and Remove "&quot"
+```
+def tokenize_words(no_quot_words):
+    no_quot_words = no_quot_words.split("&quot") #.replace(".", " ").replace("--", " ")
+    new = []
+    for item in no_quot_words:
+        new.extend(item.split(" "))
+    return new
+```
+We reomve "&quot" by replacing it with space. Therefore, words can be easily splitted by .split(" ")。
+We also did experments on removing "." and/or "--".
+
+4. Remove Punctuation
+```
+def remove_punctuation_from_end(word):
+    punctuation = PUNC.value
+    if len(word)>0 and word[0] in punctuation:
+        word = word[1:]
+    if len(word)>0 and word[-1] in punctuation:
+        word = word[:-1]
+    return word
+
+def check_punctuation(word):
+    punctuation = PUNC.value
+    while len(word)>0 and (word[0] in punctuation or word[-1] in punctuation):
+        word = remove_punctuation_from_end(word)
+    return word
+```
+This part only removes all the punctuations that's either in the end or in the beginning. But it will not remove punctuation inside a word, preventing words like "we're" to be splitted.
+
+5. Stemming
+```
+def cleanup_word(word):
+    w = check_punctuation(word)
+    lancaster_stemmer = LancasterStemmer()
+
+#    ps = PorterStemmer()
+    wnl = WordNetLemmatizer()
+#    w = wnl.lemmatize(w.lower())
+#    w = ps.stem(w.lower())
+#    w = ps.stem(wnl.lemmatize(w.lower()))
+    w = lancaster_stemmer.stem(wnl.lemmatize(w.lower()))
+    w = check_punctuation(w)
+    return w
+```
+This part is mainly for stemming. But you'll notice we did check and/or remove punctuaction twice. The former one is for cleaning the word for the use of stemmer. If a word like ``` cars. ``` has punctuaction with it, the stemmer will not stem the word. If the word is cleaned, namely if it becomes ``` cars ```, the stemmer will then stem the word, making it to be ```car```, which is what we want.
+
+Experiments that we did here are using different or combination of stemmers and lemmatizer.
+
 #### Naive Bayes Classifier
 
 For each label, we kept those words not in the label but in other labels with count 0. Conditional probability of word i, given label k, are calculated by the word count in the label k divided by the total word count in the label k with laplace smoothing.
@@ -283,7 +345,8 @@ Some issues were resolved using the help of the almighty Stackoverflow.
 
 [1] [Naive Bayes Text Classification - Stanford University](https://nlp.stanford.edu/IR-book/html/htmledition/naive-bayes-text-classification-1.html)
 
-[2] the paper you sent to us?
+[2] [A Review of Machine Learning Algorithms for
+Text-Documents Classification](http://www.jait.us/uploadfile/2014/1223/20141223050800532.pdf)
 
 
 
